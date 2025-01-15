@@ -7,8 +7,8 @@
       "iginx.host": {
         "envName": null,
         "propertyName": "iginx.host",
-        "defaultValue": "127.0.0.1",
-        "description": "IginX server host to connect to, Default = 127.0.0.1",
+        "defaultValue": "iginx",
+        "description": "IginX server host to connect to, Default = iginx",
         "type": "string"
       },
       "iginx.port": {
@@ -119,7 +119,7 @@
       "iginx.milvus.host": {
         "envName": null,
         "propertyName": "iginx.milvus.host",
-        "defaultValue": "127.0.0.1",
+        "defaultValue": "milvus",
         "description": "Milvus database host to connect to, Default = 127.0.0.1",
         "type": "string"
       },
