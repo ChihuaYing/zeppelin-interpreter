@@ -109,13 +109,6 @@
         "description": "The host of File HTTP server, Default = 127.0.0.1",
         "type": "string"
       },
-      "iginx.graph.tree.enable": {
-        "envName": null,
-        "propertyName": "iginx.graph.tree.enable",
-        "defaultValue": true,
-        "description": "If true, the result of show columns will be displayed as a tree; otherwise, it will be displayed as forest, Default = true",
-        "type": "checkbox"
-      },
       "iginx.milvus.host": {
         "envName": null,
         "propertyName": "iginx.milvus.host",

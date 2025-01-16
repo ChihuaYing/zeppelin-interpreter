@@ -18,43 +18,21 @@ EOT
 
 WORKDIR /app
 
-ADD target/iginx-client-0.8.0-SNAPSHOT.tar.gz .
-ADD target/iginx-assembly-0.8.0-SNAPSHOT-server.tar.gz .
-COPY udf/udf_list udf_funcs/udf_list
-COPY udf/Merge.py udf_funcs/python_scripts/Merge.py
-COPY udf/StoreEmbedding.py udf_funcs/python_scripts/StoreEmbedding.py
-COPY job/ScheduledEmbedding.yml temp/
+ADD resources/iginx-client-0.8.0-SNAPSHOT.tar.gz .
+ADD resources/iginx-assembly-0.8.0-SNAPSHOT-server.tar.gz .
 
 RUN <<EOT bash
 rm conf/log4j2.properties
 sed -i 's/enableEnvParameter=.*/enableEnvParameter=true/g' conf/config.properties
 sed -i 's/needInitBasicUDFFunctions=.*/needInitBasicUDFFunctions=true/g' conf/config.properties
+sed -i 's/enableRestService=.*/enableRestService=false/g' conf/config.properties
 EOT
 
-COPY --chmod=755 <<-EOT  entrypoint.sh
-#!/bin/bash
-if [ ! -d "transform_jobs" ]; then
-    echo "Starting IGinX at the background to register the transform job"
-    sbin/start_iginx.sh >temp/registering.log 2>&1 &
-    iginx_pid=\$!
+COPY resources/tpch-header.sql temp/
+COPY resources/udf_list udf_funcs/udf_list
+COPY resources/Merge.py udf_funcs/python_scripts/Merge.py
+COPY resources/StoreEmbedding.py udf_funcs/python_scripts/StoreEmbedding.py
+COPY resources/ScheduledEmbedding.yml temp/
 
-    echo "Waiting for IGinX to be in service"
-    until grep -q "IGinX is now in service" temp/registering.log
-    do
-        sleep 1
-    done
-
-    echo "IGinX is now in service, registering the transform job"
-    sbin/start_cli.sh -e "COMMIT TRANSFORM JOB 'temp/ScheduledEmbedding.yml';"
-
-    echo "Show background logs"
-    cat temp/registering.log
-
-    echo "Kill background and wait"
-    kill -9 \$iginx_pid && wait \$iginx_pid
-fi
-echo -e "\\033[35m""Starting IGinX""\\033[0m"
-sbin/start_iginx.sh
-EOT
-
-CMD ["./entrypoint.sh"]
+COPY --chmod=755 resources/iginx.sh  iginx.sh
+CMD ["./iginx.sh"]

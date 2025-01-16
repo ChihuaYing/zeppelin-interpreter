@@ -48,15 +48,22 @@ services:
   zk:
     image: zookeeper
 
+  iotdb:
+    image: apache/iotdb:0.12.5
+    networks:
+      default:
+        ipv4_address: 192.168.0.7
+
   iginx:
     build: .
     ports:
       - 6888:6888
     environment:
       zookeeperConnectionString: zk:2181
-
+      storageEngineList: 192.168.0.7#6667#iotdb12#username=root#password=root#has_data=false#is_read_only=false
     links:
       - zk
+      - iotdb
       - milvus
 
   zeppelin:
@@ -66,9 +73,16 @@ services:
     volumes:
       - ../../v8/target/zeppelin8-iginx-0.7.2-shaded.jar:/zeppelin/interpreter-iginx-only/iginx/zeppelin8-iginx-shaded.jar
       - ./notebook:/zeppelin/notebook
+      - ./resources/interpreter.json:/zeppelin/conf/interpreter.json
     environment:
       ZEPPELIN_ADDR: 0.0.0.0
       ZEPPELIN_INTERPRETER_DIR: /zeppelin/interpreter-iginx-only
     links:
       - iginx
       - milvus
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 192.168.0.0/16
