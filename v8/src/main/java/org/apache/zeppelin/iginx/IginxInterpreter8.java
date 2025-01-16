@@ -12,7 +12,6 @@ import cn.edu.tsinghua.iginx.thrift.LoadUDFResp;
 import cn.edu.tsinghua.iginx.thrift.SqlType;
 import cn.edu.tsinghua.iginx.utils.FormatUtils;
 import cn.edu.tsinghua.iginx.utils.Pair;
-import com.alibaba.fastjson2.JSON;
 import java.io.*;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -28,21 +27,15 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.SystemUtils;
-import org.apache.zeppelin.iginx.service.NetworkService;
+import org.apache.zeppelin.iginx.interpreter.dataproperty.DataPropertyInterpreter;
 import org.apache.zeppelin.iginx.util.*;
 import org.apache.zeppelin.iginx.util.HttpUtil;
 import org.apache.zeppelin.iginx.util.SqlCmdUtil;
 import org.apache.zeppelin.interpreter.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
 
 public class IginxInterpreter8 extends Interpreter {
   private static final Logger LOGGER = LoggerFactory.getLogger(IginxInterpreter8.class);
@@ -111,9 +104,6 @@ public class IginxInterpreter8 extends Interpreter {
   private long uploadDirMaxSize = 0;
   private boolean noteFontSizeEnable = false;
   private double noteFontSize = 9.0;
-  private boolean graphTreeEnable = true;
-  private String milvusHost = "";
-  private int milvusPort = 0;
 
   private Queue<String> downloadFileQueue = new LinkedList<>();
   private Queue<Double> downloadFileSizeQueue = new LinkedList<>();
@@ -131,6 +121,7 @@ public class IginxInterpreter8 extends Interpreter {
   private Exception exception;
 
   private SimpleFileServer fileServer;
+  private DataPropertyInterpreter dataPropertyInterpreter;
 
   // 返回结果为单个表格的语句
   private static final List<SqlType> singleFormSqlType =
@@ -141,9 +132,6 @@ public class IginxInterpreter8 extends Interpreter {
           SqlType.GetReplicaNum,
           SqlType.ShowRegisterTask);
 
-  private static final Map<String, NetworkService> networkMap = new HashMap<>();
-  private Boolean needAddHideResult = true;
-
   // 定义html模板中的占位符
   private static final String OUTPUT_TYPE = "OUTPUT_TYPE";
   private static final String PARAGRAPH_ID = "PARAGRAPH_ID";
@@ -153,10 +141,6 @@ public class IginxInterpreter8 extends Interpreter {
   private static final String STYLES = "STYLES";
   // 定义特殊操作符，按照show columns图形化命令结果
   private static final String CMD_STARTER = ">"; // 命令级参数的首个字符 >graph.tree
-  private static final String GRAPHICAL_RESULTS = ">graph.tree";
-  private static final String GRAPH_NETWORK = ">graph.network";
-  private static final String GRAPH_MERGE = ">merge";
-  private static final String GRAPH_RELATION = ">relation";
   private static final String PRINT_KEY_TIME = ">print.key.time";
 
   public IginxInterpreter8(Properties properties) {
@@ -196,11 +180,6 @@ public class IginxInterpreter8 extends Interpreter {
     noteFontSize =
         Double.parseDouble(
             properties.getProperty(IGINX_NOTE_FONT_SIZE, DEFAULT_NOTE_FONT_SIZE).trim());
-    graphTreeEnable =
-        Boolean.parseBoolean(
-            properties.getProperty(IGINX_GRAPH_TREE_ENABLE, DEFAULT_IGINX_GRAPH_TREE_ENABLE));
-    milvusHost = getProperty(IGINX_MILVUS_HOST, DEFAULT_MILVUS_HOST).trim();
-    milvusPort = Integer.parseInt(getProperty(IGINX_MILVUS_PORT, DEFAULT_MILVUS_PORT).trim());
     localIpAddress = getLocalHostExactAddress();
     if (localIpAddress == null) {
       localIpAddress = "127.0.0.1";
@@ -213,6 +192,13 @@ public class IginxInterpreter8 extends Interpreter {
       exception = e;
       System.out.println("Can not open session successfully.");
     }
+
+    dataPropertyInterpreter =
+        new DataPropertyInterpreter(
+            session,
+            getProperty(IGINX_MILVUS_HOST, DEFAULT_MILVUS_HOST).trim(),
+            Integer.parseInt(getProperty(IGINX_MILVUS_PORT, DEFAULT_MILVUS_PORT).trim()),
+            outfileDir);
 
     try {
       fileServer =
@@ -280,7 +266,7 @@ public class IginxInterpreter8 extends Interpreter {
 
     CompletableFuture.runAsync(
         () -> {
-          this.needAddHideResult = true;
+          context.getConfig().put("needAddHideResult", true);
           InterpreterResult interpreterResult = null;
           for (String cmd : sqlList) {
             interpreterResult = processSql(cmd, context);
@@ -295,7 +281,9 @@ public class IginxInterpreter8 extends Interpreter {
               }
             }
           }
-          if (needAddHideResult) addHideResult(interpreterResult, context);
+          if ((Boolean) context.getConfig().get("needAddHideResult")) {
+            addHideResult(interpreterResult, context);
+          }
           future.complete(interpreterResult);
         });
     return future;
@@ -320,10 +308,9 @@ public class IginxInterpreter8 extends Interpreter {
         return processLoadCsv(sql, context);
       } else if (isCreateFunction(sql.toLowerCase())) {
         return processCreateFunction(sql);
-      } else if (isHandelHtmlNodeClick(sql.toLowerCase())) {
-        return processHandelHtmlNodeClick(sql);
-      } else if (isHandelHtmlClearParagraph(sql)) {
-        return processHandelHtmlClearParagraph();
+      }
+      if (dataPropertyInterpreter.canInterpret(sql, context)) {
+        return dataPropertyInterpreter.interpret(sql, context);
       }
 
       SessionExecuteSqlResult sqlResult = session.executeSql(sql);
@@ -340,17 +327,6 @@ public class IginxInterpreter8 extends Interpreter {
         List<List<String>> queryList =
             sqlResult.getResultInList(
                 keyTimeEnable, FormatUtils.DEFAULT_TIME_FORMAT, timePrecision);
-        if (Boolean.parseBoolean(getCmdConfig(sql, context, GRAPH_NETWORK))) {
-          interpreterResult.add(
-              new InterpreterResultMessage(
-                  InterpreterResult.Type.HTML, buildNetworkForShowColumns(queryList, context)));
-        } else if (SqlType.ShowColumns == sqlResult.getSqlType()
-            || Boolean.parseBoolean(getCmdConfig(sql, context, GRAPHICAL_RESULTS))) {
-          interpreterResult.add(
-              new InterpreterResultMessage(
-                  InterpreterResult.Type.HTML,
-                  buildTreeForShowColumns(queryList, context.getParagraphId())));
-        }
         msg = buildSingleFormResult(queryList);
         interpreterResult.add(InterpreterResult.Type.TABLE, msg);
       } else if (sqlResult.getSqlType() == SqlType.Query && sql.startsWith("explain")) {
@@ -371,6 +347,7 @@ public class IginxInterpreter8 extends Interpreter {
         }
         interpreterResult = new InterpreterResult(InterpreterResult.Code.SUCCESS, msg);
       }
+      dataPropertyInterpreter.postProcess(context, sqlResult, interpreterResult);
       clearCmdConfig(context);
       return interpreterResult;
     } catch (Exception e) {
@@ -378,146 +355,6 @@ public class IginxInterpreter8 extends Interpreter {
           InterpreterResult.Code.ERROR,
           "encounter error when executing sql statement:\n" + e.getMessage());
     }
-  }
-
-  /**
-   * 为show columns 命令创建树状状图
-   *
-   * @param queryList
-   */
-  public String buildTreeForShowColumns(List<List<String>> queryList, String paragraphId) {
-    MultiwayTree tree = MultiwayTree.getMultiwayTree();
-    queryList
-        .subList(1, queryList.size())
-        .forEach(
-            row -> {
-              MultiwayTree.addTreeNodeFromString(tree, row.get(0));
-            });
-    String htmlTemplate = "static/highcharts/tree.html";
-    try (InputStream inputStream =
-        this.getClass().getClassLoader().getResourceAsStream(htmlTemplate)) {
-      BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
-      StringBuilder content = new StringBuilder();
-      String line;
-      while ((line = reader.readLine()) != null) {
-        content.append(line).append("\n");
-      }
-      List<HighchartsTreeNode> nodeList = new ArrayList<>();
-      int depth = tree.traverseToHighchartsTreeNodes(tree.getRoot(), nodeList);
-
-      String jsonString = JSON.toJSONString(nodeList);
-      String html =
-          content
-              .toString()
-              .replace("PARAGRAPH_ID", paragraphId)
-              .replace("NODE_LIST", jsonString)
-              .replace("TREE_DEPTH", String.valueOf(depth))
-              .replace("TREE_ENABLE", String.valueOf(graphTreeEnable));
-      String fileName = paragraphId + "_tree.html";
-      // 写入文件服务器paragraphID_tree.html
-      String targetPath = outfileDir + "/graphs/tree/" + fileName;
-      FileUtil.writeFile(html, targetPath);
-      return html;
-    } catch (IOException e) {
-      LOGGER.warn("load show columns to tree error", e);
-    }
-    return "";
-  }
-
-  public String buildNetworkForShowColumns(
-      List<List<String>> queryList, InterpreterContext context) {
-    NetworkService networkService =
-        new NetworkService(
-            Boolean.parseBoolean(getCmdConfig("", context, GRAPH_MERGE)),
-            Boolean.parseBoolean(getCmdConfig("", context, GRAPH_RELATION)),
-            context.getParagraphId(),
-            queryList,
-            session,
-            milvusHost,
-            milvusPort);
-    networkMap.put(context.getParagraphId(), networkService);
-
-    String serverAddr = "localhost";
-    String serverPort = "8080";
-    try {
-      LOGGER.info("Current working directory: " + System.getProperty("user.dir"));
-      String currentDir = System.getProperty("user.dir");
-      File configFile = new File(currentDir, "../conf/zeppelin-site.xml");
-      DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-      DocumentBuilder builder = factory.newDocumentBuilder();
-      Document document = builder.parse(configFile);
-      NodeList propertyList = document.getElementsByTagName("property");
-      for (int i = 0; i < propertyList.getLength(); i++) {
-        Node propertyNode = propertyList.item(i);
-        if (propertyNode.getNodeType() == Node.ELEMENT_NODE) {
-          Element propertyElement = (Element) propertyNode;
-          String name = propertyElement.getElementsByTagName("name").item(0).getTextContent();
-          if ("zeppelin.server.addr".equals(name)) {
-            serverAddr = propertyElement.getElementsByTagName("value").item(0).getTextContent();
-          } else if ("zeppelin.server.port".equals(name)) {
-            serverPort = propertyElement.getElementsByTagName("value").item(0).getTextContent();
-          }
-        }
-      }
-    } catch (Exception e) {
-      LOGGER.error("Failed to read or parse the Zeppelin configuration file.", e);
-    }
-
-    String html =
-        networkService
-            .initNetwork()
-            .replace("PARAGRAPH_ID", context.getParagraphId())
-            .replace("NOTE_ID", context.getNoteId())
-            .replace("ZEPPELIN_SERVER", serverAddr)
-            .replace("ZEPPELIN_PORT", serverPort);
-
-    //    String filePath = "D:\\test.html";
-    //    File file = new File(filePath);
-    //    try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
-    //      writer.write(html);
-    //      LOGGER.info("HTML content has been written to {}", filePath);
-    //    } catch (IOException e) {
-    //      LOGGER.info("Error writing to file: {}", e.getMessage());
-    //    }
-
-    return html;
-  }
-
-  private static boolean isHandelHtmlNodeClick(String sql) {
-    return sql.startsWith("handle_html_node_click");
-  }
-
-  private InterpreterResult processHandelHtmlNodeClick(String sql) {
-    LOGGER.info("enter processHandelHtmlNodeClick, the sql is {}", sql);
-    InterpreterResult interpreterResult;
-    String[] strings = sql.split(" ");
-    String paragraphId = strings[1];
-    String nodeId = strings[2];
-    NetworkService networkService = networkMap.get(paragraphId);
-    if (networkService == null) {
-      interpreterResult =
-          new InterpreterResult(
-              InterpreterResult.Code.ERROR,
-              "the networkService with paragraphId: " + paragraphId + " is null");
-      return interpreterResult;
-    }
-    String msg = networkService.handleNodeClick(nodeId);
-    LOGGER.info("processHandelHtmlNodeClick: msg is {}", msg);
-
-    interpreterResult = new InterpreterResult(InterpreterResult.Code.SUCCESS);
-    interpreterResult.add(InterpreterResult.Type.TEXT, msg);
-    this.needAddHideResult = false;
-    return interpreterResult;
-  }
-
-  private static boolean isHandelHtmlClearParagraph(String sql) {
-    return sql.equals("clearParagraph");
-  }
-
-  private InterpreterResult processHandelHtmlClearParagraph() {
-    InterpreterResult interpreterResult = new InterpreterResult(InterpreterResult.Code.SUCCESS);
-    interpreterResult.add(InterpreterResult.Type.TEXT, "");
-    return interpreterResult;
   }
 
   private static boolean isLoadDataFromCsv(String sql) {
@@ -1217,25 +1054,11 @@ public class IginxInterpreter8 extends Interpreter {
       if (!part.startsWith(CMD_STARTER)) {
         break;
       }
-      // 是否展示树状图
-      if (part.equalsIgnoreCase(GRAPHICAL_RESULTS)) {
-        context.getConfig().put(GRAPHICAL_RESULTS, "true");
-        sql = sql.substring(GRAPHICAL_RESULTS.length() + 1);
-      }
-      // 是否展示网状图
-      if (part.equalsIgnoreCase(GRAPH_NETWORK)) {
-        context.getConfig().put(GRAPH_NETWORK, "true");
-        sql = sql.substring(GRAPH_NETWORK.length() + 1);
-      }
-      // 网状图是否需要merge
-      if (part.equalsIgnoreCase(GRAPH_MERGE)) {
-        context.getConfig().put(GRAPH_MERGE, "true");
-        sql = sql.substring(GRAPH_MERGE.length() + 1);
-      }
-      // 网状图是否展示特殊关系
-      if (part.equalsIgnoreCase(GRAPH_RELATION)) {
-        context.getConfig().put(GRAPH_RELATION, "true");
-        sql = sql.substring(GRAPH_RELATION.length() + 1);
+      for (DataPropertyInterpreter.Config config : DataPropertyInterpreter.Config.values()) {
+        if (part.equalsIgnoreCase(config.getConfigName())) {
+          context.getConfig().put(config.getConfigName(), "true");
+          sql = sql.substring(config.getConfigName().length() + 1);
+        }
       }
       // key按时间戳输出，默认按长整型输出
       if (part.equalsIgnoreCase(PRINT_KEY_TIME)) {
@@ -1252,10 +1075,9 @@ public class IginxInterpreter8 extends Interpreter {
   }
 
   private void clearCmdConfig(InterpreterContext context) {
-    context.getConfig().remove(GRAPHICAL_RESULTS);
-    context.getConfig().remove(GRAPH_NETWORK);
-    context.getConfig().remove(GRAPH_MERGE);
-    context.getConfig().remove(GRAPH_RELATION);
+    for (DataPropertyInterpreter.Config config : DataPropertyInterpreter.Config.values()) {
+      context.getConfig().remove(config.getConfigName());
+    }
     context.getConfig().remove(PRINT_KEY_TIME);
   }
 }
