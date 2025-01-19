@@ -1,56 +1,17 @@
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <title>网状图示例</title>
-    <style>
-        #PARAGRAPH_ID_iframe_container {
-            min-height: 400px;
-            max-height: 600px;
-        }
-        #PARAGRAPH_ID_single_container {
-            width: 100%;
-            height: 500px;
-            background-color: #ffffff;
-            position: relative;
-            float: left;
-        }
-        .card-body {
-            position: relative;
-        }
-        .card {
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            min-width: 0;
-            background-color: #fff;
-            border-radius: .25rem;
-            min-height: 400px;
-            max-height: 600px;
-        }
-        .toggle-button {
-            padding: 0 5px;
-            border: none;
-            background-color: transparent;
-            color: inherit;
-            cursor: pointer;
-            font-size: 14px;
-            display: block;
-            margin: 10px;
-        }
-        .toggle-button::before {
-            content: ">> ";
-            color: #333;
-        }
-        .toggle-button:hover {
-            color: #2e70a8;
-        }
-        .toggle-button:hover::before {
-            color: #2e70a8;
-        }
-    </style>
-</head>
+<style>
+    #PARAGRAPH_ID_iframe_container {
+        min-height: 400px;
+        max-height: 600px;
+    }
+    #PARAGRAPH_ID_single_container {
+        width: 100%;
+        height: 500px;
+        background-color: #ffffff;
+        position: relative;
+        float: left;
+    }
+</style>
 
-<body>
 <button id="PARAGRAPH_ID_toggleButton" class="toggle-button">显示数据资产</button>
 <div id="PARAGRAPH_ID_iframe_container" style="display: none">
     <div class="card" style="width: 100%">
@@ -432,5 +393,3 @@
     init();
 
 </script>
-</body>
-</html>

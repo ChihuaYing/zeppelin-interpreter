@@ -29,6 +29,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.SystemUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.zeppelin.iginx.interpreter.dataproperty.DataPropertyInterpreter;
 import org.apache.zeppelin.iginx.util.*;
 import org.apache.zeppelin.iginx.util.HttpUtil;
@@ -353,7 +354,8 @@ public class IginxInterpreter8 extends Interpreter {
     } catch (Exception e) {
       return new InterpreterResult(
           InterpreterResult.Code.ERROR,
-          "encounter error when executing sql statement:\n" + e.getMessage());
+          String.format(
+              "encounter error when executing sql statement: %s", ExceptionUtils.getStackTrace(e)));
     }
   }
 

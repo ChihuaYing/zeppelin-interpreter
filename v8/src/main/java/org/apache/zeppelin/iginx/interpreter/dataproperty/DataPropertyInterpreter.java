@@ -5,16 +5,14 @@ import cn.edu.tsinghua.iginx.session.SessionExecuteSqlResult;
 import cn.edu.tsinghua.iginx.utils.FormatUtils;
 import com.alibaba.fastjson2.JSON;
 import java.io.*;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
+import org.apache.velocity.VelocityContext;
 import org.apache.zeppelin.iginx.service.NetworkService;
-import org.apache.zeppelin.iginx.util.FileUtil;
 import org.apache.zeppelin.iginx.util.HighchartsTreeNode;
 import org.apache.zeppelin.iginx.util.MultiwayTree;
+import org.apache.zeppelin.iginx.util.TemplateUtil;
 import org.apache.zeppelin.interpreter.InterpreterContext;
 import org.apache.zeppelin.interpreter.InterpreterResult;
 import org.apache.zeppelin.interpreter.InterpreterResultMessage;
@@ -87,11 +85,11 @@ public class DataPropertyInterpreter {
       case Query:
         List<List<String>> queryList =
             sqlResult.getResultInList(false, FormatUtils.DEFAULT_TIME_FORMAT, null);
+        List<String> paths = parsePaths(sqlResult);
         if (Config.GRAPHICAL_TREE.isActivated(context)) {
           interpreteRresult.add(
               new InterpreterResultMessage(
-                  InterpreterResult.Type.HTML,
-                  buildTreeForShowColumns(queryList, context.getParagraphId())));
+                  InterpreterResult.Type.HTML, buildDataPropertyTree(paths, context)));
         }
         if (Config.GRAPHICAL_RESULTS.isActivated(context)
             || Config.GRAPHICAL_GRAPH.isActivated(context)) {
@@ -103,6 +101,35 @@ public class DataPropertyInterpreter {
       default:
         break;
     }
+  }
+
+  private static List<String> parsePaths(SessionExecuteSqlResult sqlResult) {
+    List<List<String>> queryList =
+        sqlResult.getResultInList(false, FormatUtils.DEFAULT_TIME_FORMAT, null);
+    int pathColumnIndex = queryList.get(0).indexOf("Path");
+    List<String> paths = new ArrayList<>();
+    for (int i = 1; i < queryList.size(); i++) {
+      paths.add(queryList.get(i).get(pathColumnIndex));
+    }
+    return paths;
+  }
+
+  private static String buildDataPropertyTree(List<String> paths, InterpreterContext context) {
+    MultiwayTree tree = MultiwayTree.getMultiwayTree();
+    for (String path : paths) {
+      MultiwayTree.addTreeNodeFromString(tree, path);
+    }
+    List<HighchartsTreeNode> nodeList = new ArrayList<>();
+    int depth = tree.traverseToHighchartsTreeNodes(tree.getRoot(), nodeList);
+    String jsonString = JSON.toJSONString(nodeList);
+
+    VelocityContext velocityContext = new VelocityContext();
+    velocityContext.put("paragraphId", context.getParagraphId());
+    velocityContext.put("nodeList", jsonString);
+    velocityContext.put("treeDepth", depth);
+    velocityContext.put("treeEnable", true);
+
+    return TemplateUtil.generate("templates/data-property.vm", velocityContext);
   }
 
   public String buildNetworkForShowColumns(
@@ -162,50 +189,6 @@ public class DataPropertyInterpreter {
     //    }
 
     return html;
-  }
-
-  /**
-   * 为show columns 命令创建树状状图
-   *
-   * @param queryList
-   */
-  public String buildTreeForShowColumns(List<List<String>> queryList, String paragraphId) {
-    MultiwayTree tree = MultiwayTree.getMultiwayTree();
-    queryList
-        .subList(1, queryList.size())
-        .forEach(
-            row -> {
-              MultiwayTree.addTreeNodeFromString(tree, row.get(0));
-            });
-    String htmlTemplate = "static/highcharts/tree.html";
-    try (InputStream inputStream =
-        this.getClass().getClassLoader().getResourceAsStream(htmlTemplate)) {
-      BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
-      StringBuilder content = new StringBuilder();
-      String line;
-      while ((line = reader.readLine()) != null) {
-        content.append(line).append("\n");
-      }
-      List<HighchartsTreeNode> nodeList = new ArrayList<>();
-      int depth = tree.traverseToHighchartsTreeNodes(tree.getRoot(), nodeList);
-
-      String jsonString = JSON.toJSONString(nodeList);
-      String html =
-          content
-              .toString()
-              .replace("PARAGRAPH_ID", paragraphId)
-              .replace("NODE_LIST", jsonString)
-              .replace("TREE_DEPTH", String.valueOf(depth))
-              .replace("TREE_ENABLE", String.valueOf(true));
-      String fileName = paragraphId + "_tree.html";
-      // 写入文件服务器paragraphID_tree.html
-      String targetPath = outfileDir + "/graphs/tree/" + fileName;
-      FileUtil.writeFile(html, targetPath);
-      return html;
-    } catch (IOException e) {
-      LOGGER.warn("load show columns to tree error", e);
-    }
-    return "";
   }
 
   private static boolean isHandelHtmlNodeClick(String sql) {
