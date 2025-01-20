@@ -1,0 +1,266 @@
+<style>
+    .highcharts-figure {
+        margin: 0 auto;
+        max-width: 100vw;
+        min-width: 60vw;
+    }
+
+    #${paragraphId}_single_container {
+        height: 35rem;
+    }
+
+    .large-tree {
+        width: 100vw;
+        margin: 0 calc((100vw - 100vw) / 2);
+    }
+
+    .middle-tree {
+        width: 80vw;
+        margin: 0 calc((100vw - 80vw) / 2);
+    }
+
+    .small-tree {
+        width: 55vw;
+        margin: 0 calc((100vw - 60vw) / 2);
+    }
+</style>
+
+<details>
+    <summary>Data Property</summary>
+    <label for="${paragraphId}_match_input"/>
+    <input type="text" id="${paragraphId}_match_input" placeholder="Enter node name to highlight"/>
+    <button id="${paragraphId}_match_button">Match</button>
+    <div class="panel panel-default">
+        <figure class="highcharts-figure">
+            <div id="${paragraphId}_single_container" style="display: block"></div>
+        </figure>
+    </div>
+</details>
+
+<script>
+    let cc;
+    let nodeList = ${nodeList};
+    const nodeMap = new Map(nodeList.map(node => [node.id, node]));
+
+    async function init() {
+        const libraries = [
+            'https://code.highcharts.com/highcharts.js',
+            'https://code.highcharts.com/modules/treemap.js',
+            'https://code.highcharts.com/modules/treegraph.js',
+            'https://code.highcharts.com/modules/accessibility.js'
+        ];
+
+        try {
+            for (const lib of libraries) {
+                await import(lib);
+            }
+            console.log('All libraries loaded');
+
+
+            let depth = ${treeDepth};
+            let element = document.getElementById('${paragraphId}_single_container');
+            if(depth<5){
+                element.classList.toggle("small-tree");
+            }else if(depth<10){
+                element.classList.toggle("middle-tree");
+            }else{
+                element.classList.toggle("large-tree");
+            }
+            drawTreeGraph(nodeList);
+        } catch (error) {
+            console.error('加载失败:', error);
+        }
+        afterLoad();
+    }
+
+    function getAncestors(nodeList, matchedNodes) {
+        const ancestors = new Set();
+
+        matchedNodes.forEach(nodeId => {
+            let currentNode = nodeList.find(node => node.id === nodeId);
+            while (currentNode && currentNode.parent) {
+                ancestors.add(currentNode.parent);
+                currentNode = nodeMap.get(currentNode.parent);
+            }
+        });
+
+        return ancestors;
+    }
+
+    function drawTreeGraph(nodeList) {
+        cc = Highcharts.chart("${paragraphId}_single_container", {
+            chart: {
+                spacingBottom: 30,
+                marginRight: 200,
+                style: {
+                    fontFamily: "Helvetica, Arial, sans-serif",
+                    fontSize: '2rem'
+                }
+            },
+            credits: {
+                enabled: false
+            },
+            title: {
+                text: "数据资产"
+            },
+            series: [
+                {
+                    type: "treegraph",
+                    keys: ["parent", "id", "name","level"],
+                    clip: false,
+                    data: nodeList,
+                    marker: {
+                        symbol: "circle",
+                        radius: 6,
+                        fillColor: "#ffffff",
+                        lineWidth: 3
+                    },
+                    dataLabels: {
+                        align: "left",
+                        pointFormat: "{point.name}",
+                        style: {
+                            color: "#000000",
+                            textOutline: "3px #ffffff",
+                            whiteSpace: "nowrap"
+                        },
+                        x: 24,
+                        crop: false,
+                        overflow: "none"
+                    },
+                    levels: [
+                        {
+                            level: 1,
+                            levelIsConstant: false,
+                            collapsed: false
+                        },
+                        {
+                            level: 2,
+                            colorByPoint: true,
+                            collapsed: true
+                        },
+                        {
+                            level: 3,
+                            colorVariation: {
+                                key: "brightness",
+                                to: -0.5
+                            },
+                            collapsed: true
+                        },
+                        {
+                            level: 4,
+                            colorVariation: {
+                                key: "brightness",
+                                to: 0.5
+                            },
+                            collapsed: true
+                        },
+                        {
+                            level: 6,
+                            dataLabels: {
+                                x: 10
+                            },
+                            marker: {
+                                radius: 4
+                            },
+                            collapsed: true
+                        }
+                    ],
+                    color: function() {
+                        if (matchedNodes.includes(this.name)) {
+                            return '#FFFF00'; // Yellow for matched nodes
+                        } else if (ancestorNodes.includes(this.id)) {
+                            return '#0000FF'; // Blue for ancestor nodes
+                        } else {
+                            return '#000000'; // Default color
+                        }
+                    },
+                    point: {
+                        events: {
+                            click: function () {
+                                const node = this;  // 获取当前点击的节点
+                                // 监听节点的展开/折叠状态
+                                if (node.collapsed) {
+                                    console.log('Node Expanded:', node.name);
+                                    node.setState('normal');  // 展开节点
+                                } else {
+                                    console.log('Node Collapsed:', node.name);
+                                    node.setState('inactive');  // 折叠节点
+                                }
+                                // 计算并输出展开节点最多的层及其层高
+                                calculateMaxExpandedLayerHeight();
+                            }
+                        }
+                    }
+                }
+            ],
+            plotOptions: {
+                series: {
+                    point: {
+                        events: {
+                            click: function () {
+                                const node = this;  // 获取当前点击的节点
+                                // 监听节点的展开/折叠状态
+                                if (node.collapsed) {
+                                    console.log('Node Expanded:', node.name);
+                                    node.setState('normal');  // 展开节点
+                                } else {
+                                    console.log('Node Collapsed:', node.name);
+                                    node.setState('inactive');  // 折叠节点
+                                }
+                                // 计算并输出展开节点最多的层及其层高
+                                calculateMaxExpandedLayerHeight();
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    document.getElementById('${paragraphId}_match_button').addEventListener('click', function() {
+        const matchInput = document.getElementById('${paragraphId}_match_input').value;
+        const matchedNodes = new Set();
+        nodeList.forEach(node => {
+            if (node.name.includes(matchInput)) {
+                matchedNodes.add(node.id);
+            }
+        });
+        const ancestorNodes = getAncestors(nodeList, matchedNodes);
+        console.log('Matched Nodes:', matchedNodes);
+        console.log('Ancestor Nodes:', ancestorNodes);
+
+        console.log('Points:', cc.series[0].points);
+
+        cc.series[0].points.forEach(node => {
+        cc.series[0].points.forEach(node => {
+            if (matchedNodes.includes(node.id)) {
+                node.update({
+                        dataLabels: {
+                            style: {
+                                color: '#FFFF00'  // Yellow for matched nodes
+                            }
+                        }
+                });
+            } else if (ancestorNodes.includes(node.id)) {
+                node.update({
+                        dataLabels: {
+                            style: {
+                                color: '#0000FF'  // Blue for ancestor nodes
+                            }
+                        }
+                });
+            } else {
+                node.update({
+                        dataLabels: {
+                            style: {
+                                color: '#000000'  // Default color
+                            }
+                        }
+                });
+            }
+        });
+        cc.redraw();
+    });
+
+    init();
+</script>

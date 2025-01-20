@@ -13,10 +13,12 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import org.apache.velocity.VelocityContext;
 import org.apache.zeppelin.iginx.dao.MilvusDao;
 import org.apache.zeppelin.iginx.util.LLMUtils;
 import org.apache.zeppelin.iginx.util.NetworkTreeNode;
 import org.apache.zeppelin.iginx.util.Relation;
+import org.apache.zeppelin.iginx.util.TemplateUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,7 +60,7 @@ public class NetworkService {
     }
   }
 
-  public String initNetwork() {
+  public String initNetwork(VelocityContext velocityContext) {
     LOGGER.info("initNetwork: {} {} {}", needMerge, needRelation, paragraphId);
     root = new NetworkTreeNode("rootId", "数据资产", 0);
     buildForest(root, columnPath);
@@ -94,9 +96,10 @@ public class NetworkService {
       LOGGER.info("relationString is empty");
       relationString = "[]";
     }
-    return loadHtmlTemplate()
-        .replace("NODE_LIST", nodeString)
-        .replace("RELATION_LIST", relationString);
+
+    velocityContext.put("nodeList", nodeString);
+    velocityContext.put("relationList", relationString);
+    return TemplateUtil.generate("templates/data-property-graph.vm", velocityContext);
   }
 
   public String handleNodeClick(String nodeId) {

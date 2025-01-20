@@ -6,8 +6,6 @@ import cn.edu.tsinghua.iginx.utils.FormatUtils;
 import com.alibaba.fastjson2.JSON;
 import java.io.*;
 import java.util.*;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
 import org.apache.velocity.VelocityContext;
 import org.apache.zeppelin.iginx.service.NetworkService;
 import org.apache.zeppelin.iginx.util.HighchartsTreeNode;
@@ -18,10 +16,6 @@ import org.apache.zeppelin.interpreter.InterpreterResult;
 import org.apache.zeppelin.interpreter.InterpreterResultMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
 
 public class DataPropertyInterpreter {
 
@@ -129,7 +123,7 @@ public class DataPropertyInterpreter {
     velocityContext.put("treeDepth", depth);
     velocityContext.put("treeEnable", true);
 
-    return TemplateUtil.generate("templates/data-property.vm", velocityContext);
+    return TemplateUtil.generate("templates/data-property-tree.vm", velocityContext);
   }
 
   public String buildNetworkForShowColumns(
@@ -145,50 +139,11 @@ public class DataPropertyInterpreter {
             milvusPort);
     networkMap.put(context.getParagraphId(), networkService);
 
-    String serverAddr = "localhost";
-    String serverPort = "8080";
-    try {
-      LOGGER.info("Current working directory: " + System.getProperty("user.dir"));
-      String currentDir = System.getProperty("user.dir");
-      File configFile = new File(currentDir, "../conf/zeppelin-site.xml");
-      DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-      DocumentBuilder builder = factory.newDocumentBuilder();
-      Document document = builder.parse(configFile);
-      NodeList propertyList = document.getElementsByTagName("property");
-      for (int i = 0; i < propertyList.getLength(); i++) {
-        Node propertyNode = propertyList.item(i);
-        if (propertyNode.getNodeType() == Node.ELEMENT_NODE) {
-          Element propertyElement = (Element) propertyNode;
-          String name = propertyElement.getElementsByTagName("name").item(0).getTextContent();
-          if ("zeppelin.server.addr".equals(name)) {
-            serverAddr = propertyElement.getElementsByTagName("value").item(0).getTextContent();
-          } else if ("zeppelin.server.port".equals(name)) {
-            serverPort = propertyElement.getElementsByTagName("value").item(0).getTextContent();
-          }
-        }
-      }
-    } catch (Exception e) {
-      LOGGER.error("Failed to read or parse the Zeppelin configuration file.", e);
-    }
+    VelocityContext velocityContext = new VelocityContext();
+    velocityContext.put("paragraphId", context.getParagraphId());
+    velocityContext.put("noteId", context.getNoteId());
 
-    String html =
-        networkService
-            .initNetwork()
-            .replace("PARAGRAPH_ID", context.getParagraphId())
-            .replace("NOTE_ID", context.getNoteId())
-            .replace("ZEPPELIN_SERVER", serverAddr)
-            .replace("ZEPPELIN_PORT", serverPort);
-
-    //    String filePath = "D:\\test.html";
-    //    File file = new File(filePath);
-    //    try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
-    //      writer.write(html);
-    //      LOGGER.info("HTML content has been written to {}", filePath);
-    //    } catch (IOException e) {
-    //      LOGGER.info("Error writing to file: {}", e.getMessage());
-    //    }
-
-    return html;
+    return networkService.initNetwork(velocityContext);
   }
 
   private static boolean isHandelHtmlNodeClick(String sql) {
