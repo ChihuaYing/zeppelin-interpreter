@@ -11,7 +11,7 @@ class TemplateUtilTest {
   @ParameterizedTest
   @ValueSource(
       strings = {
-        "templates/data-property-tree.vm",
+        "templates/data-property.vm",
       })
   void generate(String resourceName) {
     VelocityContext context = new VelocityContext();

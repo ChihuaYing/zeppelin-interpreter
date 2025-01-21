@@ -3,13 +3,12 @@ package org.apache.zeppelin.iginx.interpreter.dataproperty;
 import cn.edu.tsinghua.iginx.session.Session;
 import cn.edu.tsinghua.iginx.session.SessionExecuteSqlResult;
 import cn.edu.tsinghua.iginx.utils.FormatUtils;
-import com.alibaba.fastjson2.JSON;
-import java.io.*;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.*;
 import org.apache.velocity.VelocityContext;
+import org.apache.zeppelin.iginx.interpreter.dataproperty.entry.GraphData;
 import org.apache.zeppelin.iginx.service.NetworkService;
-import org.apache.zeppelin.iginx.util.HighchartsTreeNode;
-import org.apache.zeppelin.iginx.util.MultiwayTree;
 import org.apache.zeppelin.iginx.util.TemplateUtil;
 import org.apache.zeppelin.interpreter.InterpreterContext;
 import org.apache.zeppelin.interpreter.InterpreterResult;
@@ -20,6 +19,7 @@ import org.slf4j.LoggerFactory;
 public class DataPropertyInterpreter {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DataPropertyInterpreter.class);
+  private static final ObjectMapper MAPPER = new ObjectMapper();
 
   public enum Config {
     GRAPHICAL_RESULTS("data.property"),
@@ -73,7 +73,8 @@ public class DataPropertyInterpreter {
   public void postProcess(
       InterpreterContext context,
       SessionExecuteSqlResult sqlResult,
-      InterpreterResult interpreteRresult) {
+      InterpreterResult interpreteRresult)
+      throws JsonProcessingException {
     switch (sqlResult.getSqlType()) {
       case ShowColumns:
       case Query:
@@ -83,7 +84,7 @@ public class DataPropertyInterpreter {
         if (Config.GRAPHICAL_TREE.isActivated(context)) {
           interpreteRresult.add(
               new InterpreterResultMessage(
-                  InterpreterResult.Type.HTML, buildDataPropertyTree(paths, context)));
+                  InterpreterResult.Type.HTML, generateDataPropertyHtml(paths, context)));
         }
         if (Config.GRAPHICAL_RESULTS.isActivated(context)
             || Config.GRAPHICAL_GRAPH.isActivated(context)) {
@@ -108,22 +109,20 @@ public class DataPropertyInterpreter {
     return paths;
   }
 
-  private static String buildDataPropertyTree(List<String> paths, InterpreterContext context) {
-    MultiwayTree tree = MultiwayTree.getMultiwayTree();
+  String generateDataPropertyHtml(List<String> paths, InterpreterContext context)
+      throws JsonProcessingException {
+    GraphData.Builder builder = new GraphData.Builder();
     for (String path : paths) {
-      MultiwayTree.addTreeNodeFromString(tree, path);
+      builder.addNode(path.split("\\."));
     }
-    List<HighchartsTreeNode> nodeList = new ArrayList<>();
-    int depth = tree.traverseToHighchartsTreeNodes(tree.getRoot(), nodeList);
-    String jsonString = JSON.toJSONString(nodeList);
+    GraphData graphData = builder.build();
+    String graphDataJson = MAPPER.writeValueAsString(graphData);
 
     VelocityContext velocityContext = new VelocityContext();
     velocityContext.put("paragraphId", context.getParagraphId());
-    velocityContext.put("nodeList", jsonString);
-    velocityContext.put("treeDepth", depth);
-    velocityContext.put("treeEnable", true);
+    velocityContext.put("data", graphDataJson);
 
-    return TemplateUtil.generate("templates/data-property-tree.vm", velocityContext);
+    return TemplateUtil.generate("templates/data-property.vm", velocityContext);
   }
 
   public String buildNetworkForShowColumns(
@@ -169,7 +168,7 @@ public class DataPropertyInterpreter {
 
     interpreterResult = new InterpreterResult(InterpreterResult.Code.SUCCESS);
     interpreterResult.add(InterpreterResult.Type.TEXT, msg);
-    context.getConfig().put("needAddHideResult", true);
+    context.getConfig().put("needAddHideResult", false);
     return interpreterResult;
   }
 

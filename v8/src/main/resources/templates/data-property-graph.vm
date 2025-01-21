@@ -114,8 +114,9 @@
 
                 // 绑定双击事件
                 network.on('doubleClick', async function (params) {
+                    console.debug('doubleClick:', params);
                     if (params.nodes.length > 0) {
-                        const nodeId = params.nodes[0];
+                        console.debug('nodeId:', params.nodes[0]);
                         await handleNodeClickWithThrottle(nodeId);
                     }
                 });
@@ -282,7 +283,7 @@
 
             function handleResult(result) {
                 console.log("begin handleResult");
-                clearRelation();
+                // clearRelation();
                 if (result && result.add) {
                     console.log("handle add");
                     // 处理 add 中的 nodes
