@@ -24,7 +24,7 @@ import org.slf4j.LoggerFactory;
 
 public class NetworkService {
   private static final Logger LOGGER = LoggerFactory.getLogger(NetworkService.class);
-  private static final Double RELATION_THRESHOLD = 0.85; // 关系阈值
+  private static final Double RELATION_THRESHOLD = 0.8; // 关系阈值
   private static final Integer RELATION_DEPTH_LEVEL = 3; // 关系深度层级
   private static final Integer MERGE_MIN_SIZE = 5; // 需要聚类的最小值
   private static final String MERGE_SQL_STR =
@@ -176,12 +176,7 @@ public class NetworkService {
       LOGGER.info("the size of the forest is too small");
       return;
     }
-    String str = "";
-    try {
-      str = jsonArray.toString();
-    } catch (Exception e) {
-      LOGGER.error("JSON fail", e);
-    }
+    String str = jsonArray.toString();
 
     String sql =
         MERGE_SQL_STR
@@ -189,9 +184,6 @@ public class NetworkService {
             .replace("&&&", milvusHost)
             .replace("%%%", milvusPort.toString());
     List<List<String>> queryList = getQueryList(sql);
-    if (queryList == null) {
-      return;
-    }
 
     // 根据label区分，使用并行流处理查询结果，构建 labelToNodesMap
     Map<String, List<NetworkTreeNode>> labelToNodesMap =
@@ -240,11 +232,10 @@ public class NetworkService {
       SessionExecuteSqlResult sqlResult = session.executeSql(sql);
       queryList = sqlResult.getResultInList(false, FormatUtils.DEFAULT_TIME_FORMAT, "");
     } catch (Exception e) {
-      LOGGER.info("encounter error when executing sql statement:\n" + e.getMessage());
+      throw new IllegalStateException("encounter error when executing sql statement", e);
     }
     if (queryList == null || queryList.size() <= 1) {
-      LOGGER.info("Invalid queryList or insufficient data, the sql is {}", sql);
-      return null;
+      throw new IllegalStateException("Invalid queryList or insufficient data, the sql is " + sql);
     }
     LOGGER.info("the size of queryList is {}", queryList.size());
     return queryList;

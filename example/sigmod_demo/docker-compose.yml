@@ -58,9 +58,12 @@ services:
     build: .
     ports:
       - 6888:6888
+    volumes:
+      - ./model_cache:/root/.cache/huggingface/hub
     environment:
       zookeeperConnectionString: zk:2181
       storageEngineList: 192.168.0.7#6667#iotdb12#username=root#password=root#has_data=false#is_read_only=false
+
     links:
       - zk
       - iotdb
@@ -73,11 +76,13 @@ services:
     volumes:
       - ../../v8/target/zeppelin8-iginx-0.7.2-shaded.jar:/zeppelin/interpreter-iginx-only/iginx/zeppelin8-iginx-shaded.jar
       - ./notebook:/zeppelin/notebook
+      - ./logs/zepplin:/zeppelin/logs
       - ./resources/interpreter.json:/zeppelin/conf/interpreter.json
-      - ./resources/log4j.properties:/zeppelin/conf/log4j.properties
     environment:
       ZEPPELIN_ADDR: 0.0.0.0
       ZEPPELIN_INTERPRETER_DIR: /zeppelin/interpreter-iginx-only
+      ZEPPELIN_IN_DOCKER: true
+    entrypoint: /zeppelin/bin/zeppelin.sh
     links:
       - iginx
       - milvus
@@ -85,5 +90,6 @@ services:
 networks:
   default:
     ipam:
+      driver: default
       config:
-        - subnet: 192.168.0.0/16
+        - subnet: 192.168.0.0/24

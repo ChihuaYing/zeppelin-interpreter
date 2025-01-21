@@ -58,8 +58,8 @@ public class IginxInterpreter8 extends Interpreter {
   private static final String IGINX_NOTE_FONT_SIZE_ENABLE = "iginx.zeppelin.note.font.size.enable";
   private static final String IGINX_NOTE_FONT_SIZE = "iginx.zeppelin.note.font.size";
   private static final String IGINX_GRAPH_TREE_ENABLE = "iginx.graph.tree.enable";
-  private static final String IGINX_MILVUS_HOST = "ginx.milvus.host";
-  private static final String IGINX_MILVUS_PORT = "ginx.milvus.port";
+  private static final String IGINX_MILVUS_HOST = "iginx.milvus.host";
+  private static final String IGINX_MILVUS_PORT = "iginx.milvus.port";
 
   private static final String DEFAULT_HOST = "127.0.0.1";
   private static final String DEFAULT_PORT = "6888";

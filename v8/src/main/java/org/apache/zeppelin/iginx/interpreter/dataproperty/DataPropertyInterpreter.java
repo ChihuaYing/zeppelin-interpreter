@@ -25,6 +25,7 @@ public class DataPropertyInterpreter {
     GRAPHICAL_RESULTS("data.property"),
     GRAPHICAL_MERGE("data.property.merge"),
     GRAPHICAL_RELATION("data.property.relation"),
+    GRAPHICAL_MERGE_RELATION("data.property.merge.relation"),
     GRAPHICAL_GRAPH("data.property.graph"),
     GRAPHICAL_TREE("data.property.tree");
 
@@ -87,7 +88,10 @@ public class DataPropertyInterpreter {
                   InterpreterResult.Type.HTML, generateDataPropertyHtml(paths, context)));
         }
         if (Config.GRAPHICAL_RESULTS.isActivated(context)
-            || Config.GRAPHICAL_GRAPH.isActivated(context)) {
+            || Config.GRAPHICAL_GRAPH.isActivated(context)
+            || Config.GRAPHICAL_MERGE.isActivated(context)
+            || Config.GRAPHICAL_RELATION.isActivated(context)
+            || Config.GRAPHICAL_MERGE_RELATION.isActivated(context)) {
           interpreteRresult.add(
               new InterpreterResultMessage(
                   InterpreterResult.Type.HTML, buildNetworkForShowColumns(queryList, context)));
@@ -129,8 +133,10 @@ public class DataPropertyInterpreter {
       List<List<String>> queryList, InterpreterContext context) {
     NetworkService networkService =
         new NetworkService(
-            Config.GRAPHICAL_MERGE.isActivated(context),
-            Config.GRAPHICAL_RELATION.isActivated(context),
+            Config.GRAPHICAL_MERGE.isActivated(context)
+                || Config.GRAPHICAL_MERGE_RELATION.isActivated(context),
+            Config.GRAPHICAL_RELATION.isActivated(context)
+                || Config.GRAPHICAL_MERGE_RELATION.isActivated(context),
             context.getParagraphId(),
             queryList,
             session,

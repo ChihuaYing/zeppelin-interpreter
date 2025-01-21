@@ -1,8 +1,8 @@
-insert into tpch.region(key,r_regionkey,r_name,r_comment) values (0,0,'','');
-insert into tpch.nation(key,n_nationkey,n_name,n_regionkey,n_comment) values (0,0,'',0,'');
-insert into tpch.supplier(key,s_suppkey,s_name,s_address,s_nationkey,s_phone,s_acctbal,s_comment) values (0,0,'','','',0,0,'');
-insert into tpch.part(key,p_partkey,p_name,p_mfgr,p_brand,p_type,p_size,p_container,p_retailprice,p_comment) values (0,0,'','','','',0,'',0,'');
-insert into tpch.partsupp(key,ps_partkey,ps_suppkey,ps_availqty,ps_supplycost,ps_comment) values (0,0,0,0,0,'');
-insert into tpch.customer(key,c_custkey,c_name,c_address,c_nationkey,c_phone,c_acctbal,c_mktsegment,c_comment) values (0,0,'','','',0,0,'','');
-insert into tpch.orders(key,o_orderkey,o_custkey,o_orderstatus,o_totalprice,o_orderdate,o_orderpriority,o_clerk,o_shippriority,o_comment) values (0,0,0,'',0,'','','',0,'');
-insert into tpch.lineitem(key,l_orderkey,l_partkey,l_suppkey,l_linenumber,l_quantity,l_extendedprice,l_discount,l_tax,l_returnflag,l_linestatus,l_shipdate,l_commitdate,l_receiptdate,l_shipinstruct,l_shipmode,l_comment) values (0,0,0,0,0,0,0,0,0,'','',0,0,0,'','','');
+insert into region(key,r_regionkey,r_name,r_comment) values (0,0,'','');
+insert into nation(key,n_nationkey,n_name,n_regionkey,n_comment) values (0,0,'',0,'');
+insert into supplier(key,s_suppkey,s_name,s_address,s_nationkey,s_phone,s_acctbal,s_comment) values (0,0,'','','',0,0,'');
+insert into part(key,p_partkey,p_name,p_mfgr,p_brand,p_type,p_size,p_container,p_retailprice,p_comment) values (0,0,'','','','',0,'',0,'');
+insert into partsupp(key,ps_partkey,ps_suppkey,ps_availqty,ps_supplycost,ps_comment) values (0,0,0,0,0,'');
+insert into customer(key,c_custkey,c_name,c_address,c_nationkey,c_phone,c_acctbal,c_mktsegment,c_comment) values (0,0,'','','',0,0,'','');
+insert into orders(key,o_orderkey,o_custkey,o_orderstatus,o_totalprice,o_orderdate,o_orderpriority,o_clerk,o_shippriority,o_comment) values (0,0,0,'',0,'','','',0,'');
+insert into lineitem(key,l_orderkey,l_partkey,l_suppkey,l_linenumber,l_quantity,l_extendedprice,l_discount,l_tax,l_returnflag,l_linestatus,l_shipdate,l_commitdate,l_receiptdate,l_shipinstruct,l_shipmode,l_comment) values (0,0,0,0,0,0,0,0,0,'','',0,0,0,'','','');

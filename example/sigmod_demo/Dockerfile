@@ -21,6 +21,7 @@ WORKDIR /app
 ADD resources/iginx-client-0.8.0-SNAPSHOT.tar.gz .
 ADD resources/iginx-assembly-0.8.0-SNAPSHOT-server.tar.gz .
 
+
 RUN <<EOT bash
 rm conf/log4j2.properties
 sed -i 's/enableEnvParameter=.*/enableEnvParameter=true/g' conf/config.properties
