@@ -74,6 +74,7 @@ services:
       - ../../v8/target/zeppelin8-iginx-0.7.2-shaded.jar:/zeppelin/interpreter-iginx-only/iginx/zeppelin8-iginx-shaded.jar
       - ./notebook:/zeppelin/notebook
       - ./resources/interpreter.json:/zeppelin/conf/interpreter.json
+      - ./resources/log4j.properties:/zeppelin/conf/log4j.properties
     environment:
       ZEPPELIN_ADDR: 0.0.0.0
       ZEPPELIN_INTERPRETER_DIR: /zeppelin/interpreter-iginx-only
