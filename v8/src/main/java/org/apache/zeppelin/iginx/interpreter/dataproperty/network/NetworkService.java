@@ -1,24 +1,19 @@
-package org.apache.zeppelin.iginx.service;
+package org.apache.zeppelin.iginx.interpreter.dataproperty.network;
 
-import cn.edu.tsinghua.iginx.session.Session;
-import cn.edu.tsinghua.iginx.session.SessionExecuteSqlResult;
-import cn.edu.tsinghua.iginx.utils.FormatUtils;
 import cn.edu.tsinghua.iginx.utils.StringUtils;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
 import com.alibaba.fastjson2.filter.PropertyFilter;
+import com.google.common.collect.Multimap;
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.velocity.VelocityContext;
-import org.apache.zeppelin.iginx.dao.MilvusDao;
-import org.apache.zeppelin.iginx.util.LLMUtils;
-import org.apache.zeppelin.iginx.util.NetworkTreeNode;
-import org.apache.zeppelin.iginx.util.Relation;
-import org.apache.zeppelin.iginx.util.TemplateUtil;
+import org.apache.zeppelin.iginx.interpreter.dataproperty.IginxDao;
+import org.apache.zeppelin.iginx.util.VelocityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,17 +22,13 @@ public class NetworkService {
   private static final Double RELATION_THRESHOLD = 0.8; // 关系阈值
   private static final Integer RELATION_DEPTH_LEVEL = 3; // 关系深度层级
   private static final Integer MERGE_MIN_SIZE = 5; // 需要聚类的最小值
-  private static final String MERGE_SQL_STR =
-      "select merge(*, str='@@@', host='&&&', port='%%%') from (show columns ###);";
+
   private Boolean needMerge; // 是否需要合并
   private Boolean needRelation; // 是否需要计算关系
-  private Session session;
   private String paragraphId;
   private List<String[]> columnPath;
   private NetworkTreeNode root;
-  private MilvusDao milvusDao;
-  private String milvusHost;
-  private Integer milvusPort;
+  private IginxDao iginx;
   private Map<String, Map<String, Relation>> relationMap = new ConcurrentHashMap<>();
 
   public NetworkService(
@@ -45,19 +36,12 @@ public class NetworkService {
       Boolean needRelation,
       String paragraphId,
       List<String[]> columnPath,
-      Session session,
-      String milvusHost,
-      Integer milvusPort) {
+      IginxDao iginx) {
     this.needMerge = needMerge;
     this.needRelation = needRelation;
     this.paragraphId = paragraphId;
     this.columnPath = columnPath;
-    this.session = session;
-    this.milvusHost = milvusHost;
-    this.milvusPort = milvusPort;
-    if (needRelation) {
-      this.milvusDao = MilvusDao.getInstance(this.milvusHost, this.milvusPort);
-    }
+    this.iginx = iginx;
   }
 
   public String initNetwork(VelocityContext velocityContext) {
@@ -99,7 +83,7 @@ public class NetworkService {
 
     velocityContext.put("nodeList", nodeString);
     velocityContext.put("relationList", relationString);
-    return TemplateUtil.generate("templates/data-property.vm", velocityContext);
+    return VelocityUtil.generate("templates/data-property.vm", velocityContext);
   }
 
   public String handleNodeClick(String nodeId) {
@@ -164,35 +148,30 @@ public class NetworkService {
 
   // todo:数据量很大时，updateNodes会几乎遍历所有结点，比较耗时，后续考虑借鉴懒标记思想优化？
   private void mergeForest(NetworkTreeNode root) {
-    long startTime = System.currentTimeMillis();
-    JSONArray jsonArray = new JSONArray();
+    Set<String> nodesSet = new HashSet<>();
     for (NetworkTreeNode childNode : root.getChildren().values()) {
-      jsonArray.add(childNode.getName());
+      nodesSet.add(childNode.getName());
     }
-    if (jsonArray.size() < MERGE_MIN_SIZE) {
+
+    if (nodesSet.size() < MERGE_MIN_SIZE) {
       LOGGER.info("the size of the forest is too small");
       return;
     }
-    String str = jsonArray.toString();
 
-    String sql =
-        MERGE_SQL_STR
-            .replace("@@@", str)
-            .replace("&&&", milvusHost)
-            .replace("%%%", milvusPort.toString());
-    List<List<String>> queryList = getQueryList(sql);
+    Multimap<String, String> groupingMap = iginx.getGroupingOf(nodesSet);
 
-    // 根据label区分，使用并行流处理查询结果，构建 labelToNodesMap
-    Map<String, List<NetworkTreeNode>> labelToNodesMap =
-        queryList
-            .parallelStream()
-            .skip(1) // 跳过表头
-            .collect(
-                Collectors.groupingBy(
-                    row -> row.get(0),
-                    Collectors.mapping(
-                        row -> root.getChildren().get(row.get(1)), Collectors.toList())));
-    LOGGER.info("the size of labelToNodesMap is {}", labelToNodesMap.size());
+    Map<String, List<NetworkTreeNode>> labelToNodesMap = new HashMap<>();
+    for (Map.Entry<String, Collection<String>> group : groupingMap.asMap().entrySet()) {
+      List<NetworkTreeNode> nodesToMerge = new ArrayList<>();
+      for (String nodeName : group.getValue()) {
+        NetworkTreeNode node = root.getChildren().get(nodeName);
+        if (node == null) {
+          throw new IllegalStateException("Node not found for name: " + nodeName);
+        }
+        nodesToMerge.add(node);
+      }
+      labelToNodesMap.put(group.getKey(), nodesToMerge);
+    }
 
     // 对每个label进行合并
     labelToNodesMap
@@ -218,24 +197,6 @@ public class NetworkService {
                 }
               }
             });
-
-    long endTime = System.currentTimeMillis();
-    LOGGER.info("mergeForest run time：" + (endTime - startTime) + "ms");
-  }
-
-  private List<List<String>> getQueryList(String sql) {
-    List<List<String>> queryList = null;
-    try {
-      SessionExecuteSqlResult sqlResult = session.executeSql(sql);
-      queryList = sqlResult.getResultInList(false, FormatUtils.DEFAULT_TIME_FORMAT, "");
-    } catch (Exception e) {
-      throw new IllegalStateException("encounter error when executing sql statement", e);
-    }
-    if (queryList == null || queryList.size() <= 1) {
-      throw new IllegalStateException("Invalid queryList or insufficient data, the sql is " + sql);
-    }
-    LOGGER.info("the size of queryList is {}", queryList.size());
-    return queryList;
   }
 
   private void updateNodes(NetworkTreeNode node, String mergeRoot) {
@@ -346,9 +307,9 @@ public class NetworkService {
     for (NetworkTreeNode childNode : node.getChildren().values()) {
       paths.add(childNode.getEmbeddingId());
     }
-    Map<String, List<Float>> result = milvusDao.queryEmbeddingByPaths(paths);
+    Map<String, float[]> embeddings = iginx.queryEmbeddingOfPaths(paths);
     for (NetworkTreeNode childNode : node.getChildren().values()) {
-      childNode.setEmbedding(result.get(childNode.getEmbeddingId()));
+      childNode.setEmbedding(embeddings.get(childNode.getEmbeddingId()));
     }
   }
 
@@ -436,22 +397,32 @@ public class NetworkService {
     return a.compareTo(b) < 0 ? a + "-" + b : b + "-" + a;
   }
 
-  private Double cosineSimilarity(List<Float> embedding1, List<Float> embedding2) {
+  private Double cosineSimilarity(float[] embedding1, float[] embedding2) {
     if (embedding1 == null || embedding2 == null) {
       throw new IllegalArgumentException("embedding不能为空");
     }
-    if (embedding1.size() != embedding2.size()) {
+    if (embedding1.length != embedding2.length) {
       throw new IllegalArgumentException("两个向量的维度必须相同");
     }
     // 点积计算
     double dotProduct =
-        IntStream.range(0, embedding1.size())
+        IntStream.range(0, embedding1.length)
             .parallel()
-            .mapToDouble(i -> embedding1.get(i) * embedding2.get(i))
+            .mapToDouble(i -> embedding1[i] * embedding2[i])
             .sum();
     // 向量模长计算
-    double magnitude1 = Math.sqrt(embedding1.parallelStream().mapToDouble(val -> val * val).sum());
-    double magnitude2 = Math.sqrt(embedding2.parallelStream().mapToDouble(val -> val * val).sum());
+    double magnitude1 =
+        Math.sqrt(
+            IntStream.range(0, embedding1.length)
+                .parallel()
+                .mapToDouble(i -> embedding1[i] * embedding1[i])
+                .sum());
+    double magnitude2 =
+        Math.sqrt(
+            IntStream.range(0, embedding2.length)
+                .parallel()
+                .mapToDouble(i -> embedding2[i] * embedding2[i])
+                .sum());
     return dotProduct / (magnitude1 * magnitude2);
   }
 

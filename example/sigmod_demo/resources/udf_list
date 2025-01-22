@@ -1,2 +1,4 @@
-UDSF,merge,UDFMerge,Merge.py
 UDSF,store_embedding,UDFStoreEmbedding,StoreEmbedding.py
+UDSF,merge,UDFMerge,Merge.py
+UDSF,get_embedding,UDFGetEmbedding,GetEmbedding.py
+

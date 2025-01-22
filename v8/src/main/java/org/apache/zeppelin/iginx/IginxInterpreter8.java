@@ -198,8 +198,7 @@ public class IginxInterpreter8 extends Interpreter {
         new DataPropertyInterpreter(
             session,
             getProperty(IGINX_MILVUS_HOST, DEFAULT_MILVUS_HOST).trim(),
-            Integer.parseInt(getProperty(IGINX_MILVUS_PORT, DEFAULT_MILVUS_PORT).trim()),
-            outfileDir);
+            Integer.parseInt(getProperty(IGINX_MILVUS_PORT, DEFAULT_MILVUS_PORT).trim()));
 
     try {
       fileServer =

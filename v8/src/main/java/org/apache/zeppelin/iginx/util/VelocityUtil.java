@@ -6,8 +6,8 @@ import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.VelocityEngine;
 import org.apache.velocity.runtime.resource.loader.ClasspathResourceLoader;
 
-public class TemplateUtil {
-  private TemplateUtil() {}
+public class VelocityUtil {
+  private VelocityUtil() {}
 
   public static String generate(String resourceName, VelocityContext context) {
     Properties properties = new Properties();

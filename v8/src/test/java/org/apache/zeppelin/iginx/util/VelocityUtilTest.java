@@ -6,7 +6,7 @@ import org.apache.velocity.VelocityContext;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-class TemplateUtilTest {
+class VelocityUtilTest {
 
   @ParameterizedTest
   @ValueSource(
@@ -15,7 +15,7 @@ class TemplateUtilTest {
       })
   void generate(String resourceName) {
     VelocityContext context = new VelocityContext();
-    String result = TemplateUtil.generate(resourceName, context);
+    String result = VelocityUtil.generate(resourceName, context);
     System.out.println(result);
     assertNotNull(result);
   }

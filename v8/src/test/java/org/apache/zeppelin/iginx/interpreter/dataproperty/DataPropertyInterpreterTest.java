@@ -14,7 +14,7 @@ class DataPropertyInterpreterTest {
 
   @BeforeEach
   void setUp() {
-    interpreter = new DataPropertyInterpreter(null, null, 0, null);
+    interpreter = new DataPropertyInterpreter(null, null, 0);
   }
 
   @Test

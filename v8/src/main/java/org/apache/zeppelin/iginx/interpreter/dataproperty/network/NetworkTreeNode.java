@@ -1,4 +1,4 @@
-package org.apache.zeppelin.iginx.util;
+package org.apache.zeppelin.iginx.interpreter.dataproperty.network;
 
 import java.util.*;
 
@@ -8,7 +8,7 @@ public class NetworkTreeNode {
   private Map<String, NetworkTreeNode> children = new HashMap<>();
   private int depth;
   private String mergedRoot;
-  private List<Float> embedding;
+  private float[] embedding;
   private Boolean isExpanded;
   private Boolean isShown;
 
@@ -77,11 +77,11 @@ public class NetworkTreeNode {
     this.mergedRoot = mergedRoot;
   }
 
-  public List<Float> getEmbedding() {
+  public float[] getEmbedding() {
     return embedding;
   }
 
-  public void setEmbedding(List<Float> embedding) {
+  public void setEmbedding(float[] embedding) {
     this.embedding = embedding;
   }
 

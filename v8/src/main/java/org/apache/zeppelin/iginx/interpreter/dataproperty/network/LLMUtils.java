@@ -1,4 +1,4 @@
-package org.apache.zeppelin.iginx.util;
+package org.apache.zeppelin.iginx.interpreter.dataproperty.network;
 
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;

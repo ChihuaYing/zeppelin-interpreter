@@ -1,4 +1,4 @@
-package org.apache.zeppelin.iginx.util;
+package org.apache.zeppelin.iginx.interpreter.dataproperty.network;
 
 public class Relation {
   private String from;

@@ -1,20 +1,15 @@
 package org.apache.zeppelin.iginx.interpreter.dataproperty;
 
-import cn.edu.tsinghua.iginx.exception.SessionException;
 import cn.edu.tsinghua.iginx.session.Session;
-import cn.edu.tsinghua.iginx.session.SessionExecuteSqlResult;
-import cn.edu.tsinghua.iginx.utils.FormatUtils;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Preconditions;
 import java.util.*;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.velocity.VelocityContext;
 import org.apache.zeppelin.iginx.interpreter.dataproperty.entry.GraphData;
-import org.apache.zeppelin.iginx.service.NetworkService;
-import org.apache.zeppelin.iginx.util.TemplateUtil;
+import org.apache.zeppelin.iginx.interpreter.dataproperty.network.NetworkService;
+import org.apache.zeppelin.iginx.util.VelocityUtil;
 import org.apache.zeppelin.interpreter.InterpreterContext;
 import org.apache.zeppelin.interpreter.InterpreterResult;
 import org.slf4j.Logger;
@@ -27,17 +22,11 @@ public class DataPropertyInterpreter {
 
   private final Map<String, NetworkService> networkMap = new HashMap<>();
   private static final String STATEMENT_PREFIX = ">data.property";
-  private static final String DEFAULT_SQL = "SHOW COLUMNS;";
 
-  private Session session;
-  private String milvusHost;
-  private int milvusPort;
+  private final IginxDao iginx;
 
-  public DataPropertyInterpreter(
-      Session session, String milvusHost, int milvusPort, String outfileDir) {
-    this.milvusHost = milvusHost;
-    this.milvusPort = milvusPort;
-    this.session = session;
+  public DataPropertyInterpreter(Session session, String milvusHost, int milvusPort) {
+    this.iginx = new IginxDao(session, milvusHost, milvusPort);
   }
 
   public boolean canInterpret(String sql, InterpreterContext context) {
@@ -75,10 +64,9 @@ public class DataPropertyInterpreter {
 
   private InterpreterResult displayDataPropertyGraph(
       InterpreterContext context, String[] args, boolean allowMerge) {
-    List<String[]> paths = queryPathFromSql(String.join(" ", args));
+    List<String[]> paths = iginx.getPathOf(String.join(" ", args));
     NetworkService networkService =
-        new NetworkService(
-            allowMerge, true, context.getParagraphId(), paths, session, milvusHost, milvusPort);
+        new NetworkService(allowMerge, true, context.getParagraphId(), paths, iginx);
     networkMap.put(context.getParagraphId(), networkService);
 
     VelocityContext velocityContext = new VelocityContext();
@@ -90,7 +78,7 @@ public class DataPropertyInterpreter {
 
   private InterpreterResult displayDataPropertyTree(InterpreterContext context, String[] args)
       throws JsonProcessingException {
-    List<String[]> paths = queryPathFromSql(String.join(" ", args));
+    List<String[]> paths = iginx.getPathOf(String.join(" ", args));
     String html = generateDataPropertyHtml(paths, context);
     return new InterpreterResult(InterpreterResult.Code.SUCCESS, InterpreterResult.Type.HTML, html);
   }
@@ -107,7 +95,7 @@ public class DataPropertyInterpreter {
     VelocityContext velocityContext = new VelocityContext();
     velocityContext.put("paragraphId", context.getParagraphId());
     velocityContext.put("data", graphDataJson);
-    return TemplateUtil.generate("templates/data-property-tree.vm", velocityContext);
+    return VelocityUtil.generate("templates/data-property-tree.vm", velocityContext);
   }
 
   private InterpreterResult expandDataPropertyGraph(String[] args) {
@@ -120,35 +108,5 @@ public class DataPropertyInterpreter {
 
     String msg = networkService.handleNodeClick(nodeId);
     return new InterpreterResult(InterpreterResult.Code.SUCCESS, InterpreterResult.Type.TEXT, msg);
-  }
-
-  private List<String[]> queryPathFromSql(String sql) {
-    if (sql.isEmpty()) {
-      return queryPathFromSql(DEFAULT_SQL);
-    }
-
-    SessionExecuteSqlResult sqlResult;
-    try {
-      sqlResult = session.executeSql(sql);
-    } catch (SessionException e) {
-      throw new RuntimeException("Failed to execute SQL: " + sql, e);
-    }
-
-    List<List<String>> queryList =
-        sqlResult.getResultInList(false, FormatUtils.DEFAULT_TIME_FORMAT, null);
-    int pathColumnIndex = queryList.get(0).indexOf("Path");
-    if (pathColumnIndex == -1) {
-      pathColumnIndex = queryList.get(0).indexOf("path");
-    }
-    if (pathColumnIndex == -1) {
-      throw new IllegalArgumentException(
-          "'Path' or 'path' column not found in the result: " + queryList.get(0));
-    }
-    List<String> paths = new ArrayList<>();
-    for (int i = 1; i < queryList.size(); i++) {
-      paths.add(queryList.get(i).get(pathColumnIndex));
-    }
-    Pattern pattern = Pattern.compile("\\.");
-    return paths.stream().map(pattern::split).collect(Collectors.toList());
   }
 }
