@@ -149,4 +149,33 @@ public class IginxDao {
 
     return resultMap;
   }
+
+  public String askRelation(String nodeA, String nodeB) {
+    String prompt = "你是一个概念大师，请你用短语给出“" + nodeA + "”和“" + nodeB + "”之间切实具体、简洁精炼的关系，最好不超过10个字。";
+    return askBigModel(prompt);
+  }
+
+  public String askConcept(List<String> nodes) {
+    String prompt =
+        "你是一个概括大师，我将给你几个用‘.’分隔的中文短语，请你将它们概括成一个中文短语。注意仅需返回概括结果。\n需要概括的中文短语是: "
+            + String.join(".", nodes);
+    return askBigModel(prompt);
+  }
+
+  public String askBigModel(String prompt) {
+    String sql = "select ask_big_model(*, prompt='" + prompt + "') from (show columns ###);";
+
+    SessionExecuteSqlResult sqlResult;
+    try {
+      sqlResult = session.executeSql(sql);
+    } catch (SessionException e) {
+      throw new RuntimeException("Failed to execute SQL: " + sql, e);
+    }
+
+    List<List<Object>> queryList = sqlResult.getValues();
+    for (List<Object> row : queryList) {
+      return new String((byte[]) row.get(0), StandardCharsets.UTF_8);
+    }
+    throw new IllegalStateException("The result of ask_big_model is empty: " + sql);
+  }
 }

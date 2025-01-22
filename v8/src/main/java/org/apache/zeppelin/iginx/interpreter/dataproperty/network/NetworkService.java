@@ -181,7 +181,11 @@ public class NetworkService {
             entry -> {
               List<NetworkTreeNode> nodesToMerge = entry.getValue();
               if (nodesToMerge.size() > 1) {
-                String mergedName = LLMUtils.getConcept(nodesToMerge);
+                String mergedName =
+                    iginx.askConcept(
+                        nodesToMerge.stream()
+                            .map(NetworkTreeNode::getName)
+                            .collect(Collectors.toList()));
                 NetworkTreeNode mergedNode =
                     new NetworkTreeNode("rootId." + mergedName, mergedName, 1);
                 nodesToMerge.forEach(
@@ -372,7 +376,7 @@ public class NetworkService {
                       String[] parts2 = bestRelation.getTo().split("\\.");
                       String name1 = parts1[parts1.length - 1];
                       String name2 = parts2[parts2.length - 1];
-                      String relation = LLMUtils.getRelation(name1, name2);
+                      String relation = iginx.askRelation(name1, name2);
                       bestRelation.setRelation(relation);
                     }
                     return bestRelation;

@@ -1,4 +1,5 @@
 UDSF,store_embedding,UDFStoreEmbedding,StoreEmbedding.py
 UDSF,merge,UDFMerge,Merge.py
 UDSF,get_embedding,UDFGetEmbedding,GetEmbedding.py
+UDSF,ask_big_model,UDFAskBigModel,AskBigModel.py
 
