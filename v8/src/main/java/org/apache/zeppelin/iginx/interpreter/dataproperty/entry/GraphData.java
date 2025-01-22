@@ -17,23 +17,31 @@ public class GraphData {
   public static class Builder {
     private final Map<Pair<String, String>, EdgeData> edgeMap = new HashMap<>();
     private final Map<String, Node> nodeMap = new HashMap<>();
+    private final String rootId = ".";
+    private final String rootLabel = "Data Property";
 
-    public Builder() {}
+    public Builder() {
+      nodeMap.put(rootId, new Node(rootId, rootLabel));
+    }
 
     public Builder addNode(String[] path) {
       addNode(path, 0);
       return this;
     }
 
-    private Node addNode(String[] path, int parentIndex) {
-      Preconditions.checkArgument(parentIndex >= 0);
-      Preconditions.checkArgument(parentIndex < path.length);
-      int index = parentIndex + 1;
-      String id = Arrays.stream(path, 0, index).collect(Collectors.joining("."));
-      Node node = nodeMap.computeIfAbsent(id, k -> new Node(id, path[index - 1]));
-      node.setDepth(index);
+    private Node addNode(String[] path, int index) {
+      Preconditions.checkArgument(index >= 0);
+      Preconditions.checkArgument(index <= path.length);
+      Node node;
+      if (index == 0) {
+        node = nodeMap.get(rootId);
+      } else {
+        String id = Arrays.stream(path, 0, index).collect(Collectors.joining("."));
+        node = nodeMap.computeIfAbsent(id, k -> new Node(id, path[index - 1]));
+        node.setDepth(index);
+      }
       if (index < path.length) {
-        Node child = addNode(path, index);
+        Node child = addNode(path, index + 1);
         node.addChildren(child.getId());
         edgeMap.computeIfAbsent(
             Pair.of(node.getId(), child.getId()), p -> new EdgeData(p.getKey(), p.getValue()));
