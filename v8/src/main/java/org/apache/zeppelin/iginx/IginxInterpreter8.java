@@ -267,7 +267,6 @@ public class IginxInterpreter8 extends Interpreter {
 
     CompletableFuture.runAsync(
         () -> {
-          context.getConfig().put("needAddHideResult", true);
           InterpreterResult interpreterResult = null;
           for (String cmd : sqlList) {
             interpreterResult = processSql(cmd, context);
@@ -282,9 +281,7 @@ public class IginxInterpreter8 extends Interpreter {
               }
             }
           }
-          if ((Boolean) context.getConfig().get("needAddHideResult")) {
-            addHideResult(interpreterResult, context);
-          }
+          addHideResult(interpreterResult, context);
           future.complete(interpreterResult);
         });
     return future;
@@ -348,7 +345,6 @@ public class IginxInterpreter8 extends Interpreter {
         }
         interpreterResult = new InterpreterResult(InterpreterResult.Code.SUCCESS, msg);
       }
-      dataPropertyInterpreter.postProcess(context, sqlResult, interpreterResult);
       clearCmdConfig(context);
       return interpreterResult;
     } catch (Exception e) {
@@ -1056,12 +1052,6 @@ public class IginxInterpreter8 extends Interpreter {
       if (!part.startsWith(CMD_STARTER)) {
         break;
       }
-      for (DataPropertyInterpreter.Config config : DataPropertyInterpreter.Config.values()) {
-        if (part.equalsIgnoreCase(config.getConfigName())) {
-          context.getConfig().put(config.getConfigName(), "true");
-          sql = sql.substring(config.getConfigName().length() + 1);
-        }
-      }
       // key按时间戳输出，默认按长整型输出
       if (part.equalsIgnoreCase(PRINT_KEY_TIME)) {
         context.getConfig().put(PRINT_KEY_TIME, "true");
@@ -1077,9 +1067,6 @@ public class IginxInterpreter8 extends Interpreter {
   }
 
   private void clearCmdConfig(InterpreterContext context) {
-    for (DataPropertyInterpreter.Config config : DataPropertyInterpreter.Config.values()) {
-      context.getConfig().remove(config.getConfigName());
-    }
     context.getConfig().remove(PRINT_KEY_TIME);
   }
 }

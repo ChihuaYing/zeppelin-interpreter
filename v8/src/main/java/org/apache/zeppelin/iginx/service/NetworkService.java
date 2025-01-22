@@ -33,7 +33,7 @@ public class NetworkService {
   private Boolean needRelation; // 是否需要计算关系
   private Session session;
   private String paragraphId;
-  private List<List<String>> columnPath;
+  private List<String[]> columnPath;
   private NetworkTreeNode root;
   private MilvusDao milvusDao;
   private String milvusHost;
@@ -44,7 +44,7 @@ public class NetworkService {
       Boolean needMerge,
       Boolean needRelation,
       String paragraphId,
-      List<List<String>> columnPath,
+      List<String[]> columnPath,
       Session session,
       String milvusHost,
       Integer milvusPort) {
@@ -99,7 +99,7 @@ public class NetworkService {
 
     velocityContext.put("nodeList", nodeString);
     velocityContext.put("relationList", relationString);
-    return TemplateUtil.generate("templates/data-property-graph.vm", velocityContext);
+    return TemplateUtil.generate("templates/data-property.vm", velocityContext);
   }
 
   public String handleNodeClick(String nodeId) {
@@ -131,19 +131,16 @@ public class NetworkService {
   }
 
   // todo:数据量很大时，考虑先只build前几层？
-  private void buildForest(NetworkTreeNode root, List<List<String>> columnPath) {
+  private void buildForest(NetworkTreeNode root, List<String[]> columnPath) {
     long startTime = System.currentTimeMillis();
     // 使用并行流处理 columnPath
     columnPath
         .parallelStream()
-        .skip(1)
         .forEach(
             path -> {
-              String pathString = path.get(0);
-              String[] pathParts = pathString.split("\\.");
               NetworkTreeNode currentNode = root;
 
-              for (String nodeName : pathParts) {
+              for (String nodeName : path) {
                 // 使用同步块来保证线程安全
                 synchronized (currentNode) {
                   NetworkTreeNode childNode = currentNode.getChildren().get(nodeName);

@@ -167,7 +167,7 @@ public class MilvusDao {
         resultMap.put(pathResult.get(i), embeddingResult.get(i));
       }
     } else {
-      throw new RuntimeException("Query failed with status code: " + response.getStatus());
+      throw new RuntimeException("Query milvus failed: " + queryParam, response.getException());
     }
 
     return resultMap;

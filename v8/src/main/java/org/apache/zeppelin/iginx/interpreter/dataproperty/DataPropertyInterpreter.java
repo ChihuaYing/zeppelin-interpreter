@@ -1,18 +1,22 @@
 package org.apache.zeppelin.iginx.interpreter.dataproperty;
 
+import cn.edu.tsinghua.iginx.exception.SessionException;
 import cn.edu.tsinghua.iginx.session.Session;
 import cn.edu.tsinghua.iginx.session.SessionExecuteSqlResult;
 import cn.edu.tsinghua.iginx.utils.FormatUtils;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Preconditions;
 import java.util.*;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.velocity.VelocityContext;
 import org.apache.zeppelin.iginx.interpreter.dataproperty.entry.GraphData;
 import org.apache.zeppelin.iginx.service.NetworkService;
 import org.apache.zeppelin.iginx.util.TemplateUtil;
 import org.apache.zeppelin.interpreter.InterpreterContext;
 import org.apache.zeppelin.interpreter.InterpreterResult;
-import org.apache.zeppelin.interpreter.InterpreterResultMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,35 +25,13 @@ public class DataPropertyInterpreter {
   private static final Logger LOGGER = LoggerFactory.getLogger(DataPropertyInterpreter.class);
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
-  public enum Config {
-    GRAPHICAL_RESULTS("data.property"),
-    GRAPHICAL_MERGE("data.property.merge"),
-    GRAPHICAL_RELATION("data.property.relation"),
-    GRAPHICAL_MERGE_RELATION("data.property.merge.relation"),
-    GRAPHICAL_GRAPH("data.property.graph"),
-    GRAPHICAL_TREE("data.property.tree");
-
-    private final String config;
-
-    Config(String config) {
-      this.config = ">" + config;
-    }
-
-    public String getConfigName() {
-      return config;
-    }
-
-    public boolean isActivated(InterpreterContext context) {
-      return Boolean.parseBoolean((String) context.getConfig().get(config));
-    }
-  }
-
   private final Map<String, NetworkService> networkMap = new HashMap<>();
+  private static final String STATEMENT_PREFIX = ">data.property";
+  private static final String DEFAULT_SQL = "SHOW COLUMNS;";
 
   private Session session;
   private String milvusHost;
   private int milvusPort;
-  private String outfileDir;
 
   public DataPropertyInterpreter(
       Session session, String milvusHost, int milvusPort, String outfileDir) {
@@ -59,65 +41,65 @@ public class DataPropertyInterpreter {
   }
 
   public boolean canInterpret(String sql, InterpreterContext context) {
-    return isHandelHtmlNodeClick(sql) || isHandelHtmlClearParagraph(sql);
+    return sql.trim().startsWith(STATEMENT_PREFIX);
   }
 
-  public InterpreterResult interpret(String sql, InterpreterContext context) {
-    if (isHandelHtmlNodeClick(sql)) {
-      return processHandelHtmlNodeClick(sql, context);
-    } else if (isHandelHtmlClearParagraph(sql)) {
-      return processHandelHtmlClearParagraph();
+  public InterpreterResult interpret(String statement, InterpreterContext context) {
+    // 截取第一个空格之前的内容和之后的内容
+    String[] strings = statement.trim().split(" ");
+    String cmd = strings[0];
+    String[] args = Arrays.copyOfRange(strings, 1, strings.length);
+
+    try {
+      switch (cmd) {
+        case STATEMENT_PREFIX:
+        case STATEMENT_PREFIX + ".network":
+          return displayDataPropertyGraph(context, args, false);
+        case STATEMENT_PREFIX + ".grouping":
+        case STATEMENT_PREFIX + ".grouping.network":
+          return displayDataPropertyGraph(context, args, true);
+        case STATEMENT_PREFIX + ".tree":
+          return displayDataPropertyTree(context, args);
+        case STATEMENT_PREFIX + ".expand":
+          return expandDataPropertyGraph(args);
+        case STATEMENT_PREFIX + ".clear":
+          return new InterpreterResult(
+              InterpreterResult.Code.SUCCESS, InterpreterResult.Type.TEXT, "");
+        default:
+          throw new IllegalArgumentException("Invalid command: " + cmd);
+      }
+    } catch (Exception e) {
+      return new InterpreterResult(InterpreterResult.Code.ERROR, ExceptionUtils.getStackTrace(e));
     }
-    return null;
   }
 
-  public void postProcess(
-      InterpreterContext context,
-      SessionExecuteSqlResult sqlResult,
-      InterpreterResult interpreteRresult)
+  private InterpreterResult displayDataPropertyGraph(
+      InterpreterContext context, String[] args, boolean allowMerge) {
+    List<String[]> paths = queryPathFromSql(String.join(" ", args));
+    NetworkService networkService =
+        new NetworkService(
+            allowMerge, true, context.getParagraphId(), paths, session, milvusHost, milvusPort);
+    networkMap.put(context.getParagraphId(), networkService);
+
+    VelocityContext velocityContext = new VelocityContext();
+    velocityContext.put("paragraphId", context.getParagraphId());
+
+    String html = networkService.initNetwork(velocityContext);
+    return new InterpreterResult(InterpreterResult.Code.SUCCESS, InterpreterResult.Type.HTML, html);
+  }
+
+  private InterpreterResult displayDataPropertyTree(InterpreterContext context, String[] args)
       throws JsonProcessingException {
-    switch (sqlResult.getSqlType()) {
-      case ShowColumns:
-      case Query:
-        List<List<String>> queryList =
-            sqlResult.getResultInList(false, FormatUtils.DEFAULT_TIME_FORMAT, null);
-        List<String> paths = parsePaths(sqlResult);
-        if (Config.GRAPHICAL_TREE.isActivated(context)) {
-          interpreteRresult.add(
-              new InterpreterResultMessage(
-                  InterpreterResult.Type.HTML, generateDataPropertyHtml(paths, context)));
-        }
-        if (Config.GRAPHICAL_RESULTS.isActivated(context)
-            || Config.GRAPHICAL_GRAPH.isActivated(context)
-            || Config.GRAPHICAL_MERGE.isActivated(context)
-            || Config.GRAPHICAL_RELATION.isActivated(context)
-            || Config.GRAPHICAL_MERGE_RELATION.isActivated(context)) {
-          interpreteRresult.add(
-              new InterpreterResultMessage(
-                  InterpreterResult.Type.HTML, buildNetworkForShowColumns(queryList, context)));
-        }
-        break;
-      default:
-        break;
-    }
+    List<String[]> paths = queryPathFromSql(String.join(" ", args));
+    String html = generateDataPropertyHtml(paths, context);
+    return new InterpreterResult(InterpreterResult.Code.SUCCESS, InterpreterResult.Type.HTML, html);
   }
 
-  private static List<String> parsePaths(SessionExecuteSqlResult sqlResult) {
-    List<List<String>> queryList =
-        sqlResult.getResultInList(false, FormatUtils.DEFAULT_TIME_FORMAT, null);
-    int pathColumnIndex = queryList.get(0).indexOf("Path");
-    List<String> paths = new ArrayList<>();
-    for (int i = 1; i < queryList.size(); i++) {
-      paths.add(queryList.get(i).get(pathColumnIndex));
-    }
-    return paths;
-  }
-
-  String generateDataPropertyHtml(List<String> paths, InterpreterContext context)
+  public String generateDataPropertyHtml(List<String[]> paths, InterpreterContext context)
       throws JsonProcessingException {
     GraphData.Builder builder = new GraphData.Builder();
-    for (String path : paths) {
-      builder.addNode(path.split("\\."));
+    for (String[] path : paths) {
+      builder.addNode(path);
     }
     GraphData graphData = builder.build();
     String graphDataJson = MAPPER.writeValueAsString(graphData);
@@ -125,66 +107,48 @@ public class DataPropertyInterpreter {
     VelocityContext velocityContext = new VelocityContext();
     velocityContext.put("paragraphId", context.getParagraphId());
     velocityContext.put("data", graphDataJson);
-
-    return TemplateUtil.generate("templates/data-property.vm", velocityContext);
+    return TemplateUtil.generate("templates/data-property-tree.vm", velocityContext);
   }
 
-  public String buildNetworkForShowColumns(
-      List<List<String>> queryList, InterpreterContext context) {
-    NetworkService networkService =
-        new NetworkService(
-            Config.GRAPHICAL_MERGE.isActivated(context)
-                || Config.GRAPHICAL_MERGE_RELATION.isActivated(context),
-            Config.GRAPHICAL_RELATION.isActivated(context)
-                || Config.GRAPHICAL_MERGE_RELATION.isActivated(context),
-            context.getParagraphId(),
-            queryList,
-            session,
-            milvusHost,
-            milvusPort);
-    networkMap.put(context.getParagraphId(), networkService);
+  private InterpreterResult expandDataPropertyGraph(String[] args) {
+    Preconditions.checkArgument(args.length == 2, "Invalid number of arguments: " + args.length);
+    String paragraphId = args[0];
+    String nodeId = args[1];
 
-    VelocityContext velocityContext = new VelocityContext();
-    velocityContext.put("paragraphId", context.getParagraphId());
-    velocityContext.put("noteId", context.getNoteId());
-
-    return networkService.initNetwork(velocityContext);
-  }
-
-  private static boolean isHandelHtmlNodeClick(String sql) {
-    return sql.startsWith("handle_html_node_click");
-  }
-
-  private InterpreterResult processHandelHtmlNodeClick(String sql, InterpreterContext context) {
-    LOGGER.info("enter processHandelHtmlNodeClick, the sql is {}", sql);
-    InterpreterResult interpreterResult;
-    String[] strings = sql.split(" ");
-    String paragraphId = strings[1];
-    String nodeId = strings[2];
     NetworkService networkService = networkMap.get(paragraphId);
-    if (networkService == null) {
-      interpreterResult =
-          new InterpreterResult(
-              InterpreterResult.Code.ERROR,
-              "the networkService with paragraphId: " + paragraphId + " is null");
-      return interpreterResult;
-    }
+    Preconditions.checkNotNull(networkService, "Network service not found: " + paragraphId);
+
     String msg = networkService.handleNodeClick(nodeId);
-    LOGGER.info("processHandelHtmlNodeClick: msg is {}", msg);
-
-    interpreterResult = new InterpreterResult(InterpreterResult.Code.SUCCESS);
-    interpreterResult.add(InterpreterResult.Type.TEXT, msg);
-    context.getConfig().put("needAddHideResult", false);
-    return interpreterResult;
+    return new InterpreterResult(InterpreterResult.Code.SUCCESS, InterpreterResult.Type.TEXT, msg);
   }
 
-  private static boolean isHandelHtmlClearParagraph(String sql) {
-    return sql.equals("clearParagraph");
-  }
+  private List<String[]> queryPathFromSql(String sql) {
+    if (sql.isEmpty()) {
+      return queryPathFromSql(DEFAULT_SQL);
+    }
 
-  private InterpreterResult processHandelHtmlClearParagraph() {
-    InterpreterResult interpreterResult = new InterpreterResult(InterpreterResult.Code.SUCCESS);
-    interpreterResult.add(InterpreterResult.Type.TEXT, "");
-    return interpreterResult;
+    SessionExecuteSqlResult sqlResult;
+    try {
+      sqlResult = session.executeSql(sql);
+    } catch (SessionException e) {
+      throw new RuntimeException("Failed to execute SQL: " + sql, e);
+    }
+
+    List<List<String>> queryList =
+        sqlResult.getResultInList(false, FormatUtils.DEFAULT_TIME_FORMAT, null);
+    int pathColumnIndex = queryList.get(0).indexOf("Path");
+    if (pathColumnIndex == -1) {
+      pathColumnIndex = queryList.get(0).indexOf("path");
+    }
+    if (pathColumnIndex == -1) {
+      throw new IllegalArgumentException(
+          "'Path' or 'path' column not found in the result: " + queryList.get(0));
+    }
+    List<String> paths = new ArrayList<>();
+    for (int i = 1; i < queryList.size(); i++) {
+      paths.add(queryList.get(i).get(pathColumnIndex));
+    }
+    Pattern pattern = Pattern.compile("\\.");
+    return paths.stream().map(pattern::split).collect(Collectors.toList());
   }
 }

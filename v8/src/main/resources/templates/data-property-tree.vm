@@ -1,0 +1,177 @@
+<style>
+    .data-property-container {
+        height: 80vh;
+        width: 100%;
+        background-color: #f5f5f5;
+        border: 1px solid #ddd;
+        box-sizing: border-box;
+    }
+
+    .data-property-summary {
+        display: list-item;
+        cursor: pointer;
+    }
+</style>
+
+<details>
+    <summary class="data-property-summary">Data Property</summary>
+    <span class="labelBtn btn-group">
+        <button id="${paragraphId}_data_property_undo" type="button" class="btn btn-default btn-xs">undo</button>
+        <button id="${paragraphId}_data_property_redo" type="button" class="btn btn-default btn-xs">redo</button>
+    </span>
+    <label for="${paragraphId}_search_box">Match Word</label>
+    <input type="text" id="${paragraphId}_search_box" placeholder="Search..."/>
+    <button id="${paragraphId}_search_button" type="button">Search</button>
+    <div id="${paragraphId}_data_property_container" class="data-property-container panel panel-default"></div>
+</details>
+
+<script>
+    init();
+
+    async function init() {
+        await import('https://unpkg.com/@antv/g6@5/dist/g6.min.js');
+        const graph = createDataPropertyGraph();
+
+        for (const node of graph.getNodeData()) {
+            graph.collapseElement(node.id,false);
+        }
+
+        graph.render();
+
+        ## const history = graph.getPluginInstance('history');
+        ## document.getElementById('${paragraphId}_data_property_undo').onclick = () => {
+        ##     console.log('try undo');
+        ##     if (history.canUndo()) {
+        ##         console.log('undo');
+        ##         history.undo();
+        ##         graph.render();
+        ##     }
+        ## }
+        ##
+        ## document.getElementById('${paragraphId}_data_property_redo').onclick = () => {
+        ##     console.log('try redo');
+        ##     if (history.canRedo()) {
+        ##         console.log('redo');
+        ##         history.redo();
+        ##         graph.render();
+        ##     }
+        ## }
+
+        document.getElementById('${paragraphId}_search_button').onclick = () => {
+            console.debug('search');
+            const searchText = document.getElementById('${paragraphId}_search_box').value;
+            console.debug('searchText:', searchText);
+            console.debug('graph:', graph);
+
+            const matchedNodeIds = new Set();
+            for (const node of graph.getNodeData()) {
+                if (node.data.label.includes(searchText)) {
+                    matchedNodeIds.add(node.id);
+                }
+            }
+            console.debug('matchedNodes:', matchedNodeIds);
+
+            const ancientIds = new Set();
+            for (const matchedNodeId of matchedNodeIds) {
+                for (const ancestor of graph.getAncestorsData(matchedNodeId, 'tree')) {
+                    ancientIds.add(ancestor.id);
+                }
+            }
+            console.debug('ancientIds:', ancientIds);
+
+            const updatedNodes = [];
+            for (const node of graph.getNodeData()) {
+                if (matchedNodeIds.has(node.id)) {
+                    updatedNodes.push({
+                        id: node.id,
+                        style: {
+                            stroke: '#0f0',
+                            lineWidth: 2,
+                        },
+                    });
+                } else if (ancientIds.has(node.id)) {
+                    updatedNodes.push({
+                        id: node.id,
+                        style: {
+                            stroke: '#f0f',
+                            lineWidth: 2,
+                        },
+                    });
+                } else {
+                    updatedNodes.push({
+                        id: node.id,
+                        style: {
+                            stroke: '#000',
+                            lineWidth: 1,
+                        },
+                    });
+                }
+            }
+            console.debug('updatedNodes:', updatedNodes);
+
+            graph.updateNodeData(updatedNodes);
+            graph.render();
+        }
+
+        graph.render();
+    }
+
+    function createDataPropertyGraph() {
+        const data = ${data};
+        return new G6.Graph({
+            container: document.getElementById('${paragraphId}_data_property_container'),
+            data: data,
+            autoResize: true,
+            autoFit: 'view',
+            zoomRange: [0.1, 10],
+            behaviors: [
+                'drag-canvas',
+                'zoom-canvas',
+                'drag-element',
+                {
+                    type: 'collapse-expand',
+                    key: 'collapse-expand',
+                },
+            ],
+            plugins: [
+                {
+                    type: 'history',
+                    key: 'history',
+                },
+            ],
+            node: {
+                style: {
+                    labelText: (d) => d.data.label,
+                    labelPlacement: (d) => (!d.children || d.children.length === 0 ? 'right' : 'left'),
+                    labelBackground: true,
+                    ports: [{placement: 'right'}, {placement: 'left'}],
+                },
+                animation: {
+                    enter: false,
+                },
+            },
+            edge: {
+                type: 'cubic-horizontal',
+                animation: {
+                    enter: false,
+                },
+            },
+            layout: {
+                type: 'compact-box',
+                direction: 'LR',
+                getHeight: function getHeight() {
+                    return 32;
+                },
+                getWidth: function getWidth() {
+                    return 32;
+                },
+                getVGap: function getVGap() {
+                    return 10;
+                },
+                getHGap: function getHGap() {
+                    return 100;
+                },
+            },
+        });
+    }
+</script>
