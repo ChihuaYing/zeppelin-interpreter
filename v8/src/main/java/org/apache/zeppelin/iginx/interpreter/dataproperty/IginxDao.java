@@ -178,4 +178,29 @@ public class IginxDao {
     }
     throw new IllegalStateException("The result of ask_big_model is empty: " + sql);
   }
+
+  public List<String[]> search(String description) {
+    String sql =
+        "select search_embedding(*, description='"
+            + description
+            + "', host='"
+            + milvusHost
+            + "', port='"
+            + milvusPort
+            + "') from (show columns ###);";
+
+    SessionExecuteSqlResult sqlResult;
+    try {
+      sqlResult = session.executeSql(sql);
+    } catch (SessionException e) {
+      throw new RuntimeException("Failed to execute SQL: " + sql, e);
+    }
+
+    List<String[]> paths = new ArrayList<>();
+    for (List<Object> row : sqlResult.getValues()) {
+      String pathSepDot = new String((byte[]) row.get(0), StandardCharsets.UTF_8);
+      paths.add(pathSepDot.split("\\."));
+    }
+    return paths;
+  }
 }

@@ -3,6 +3,7 @@ package org.apache.zeppelin.iginx.interpreter.dataproperty;
 import cn.edu.tsinghua.iginx.session.Session;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.google.common.base.Preconditions;
 import java.util.*;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -51,6 +52,8 @@ public class DataPropertyInterpreter {
           return displayDataPropertyTree(context, args);
         case STATEMENT_PREFIX + ".expand":
           return expandDataPropertyGraph(args);
+        case STATEMENT_PREFIX + ".search":
+          return searchDataProperty(args);
         case STATEMENT_PREFIX + ".clear":
           return new InterpreterResult(
               InterpreterResult.Code.SUCCESS, InterpreterResult.Type.TEXT, "");
@@ -108,5 +111,24 @@ public class DataPropertyInterpreter {
 
     String msg = networkService.handleNodeClick(nodeId);
     return new InterpreterResult(InterpreterResult.Code.SUCCESS, InterpreterResult.Type.TEXT, msg);
+  }
+
+  private InterpreterResult searchDataProperty(String[] args) {
+    if (args.length == 0) {
+      return new InterpreterResult(InterpreterResult.Code.ERROR, "Empty search description");
+    }
+    String description = String.join(" ", args);
+
+    List<String[]> paths = iginx.search(description);
+    ArrayNode pathsJson = MAPPER.createArrayNode();
+    for (String[] path : paths) {
+      ArrayNode pathJson = MAPPER.createArrayNode();
+      for (String node : path) {
+        pathJson.add(node);
+      }
+      pathsJson.add(pathJson);
+    }
+    return new InterpreterResult(
+        InterpreterResult.Code.SUCCESS, InterpreterResult.Type.TEXT, pathsJson.toString());
   }
 }

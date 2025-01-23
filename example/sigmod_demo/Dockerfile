@@ -30,11 +30,11 @@ sed -i 's/enableRestService=.*/enableRestService=false/g' conf/config.properties
 EOT
 
 COPY resources/tpch-header.sql temp/
-COPY resources/udf_list udf_funcs/udf_list
-COPY resources/Merge.py udf_funcs/python_scripts/Merge.py
-COPY resources/StoreEmbedding.py udf_funcs/python_scripts/StoreEmbedding.py
-COPY resources/GetEmbedding.py udf_funcs/python_scripts/GetEmbedding.py
-COPY resources/AskBigModel.py udf_funcs/python_scripts/AskBigModel.py
+COPY resources/udf_list udf_funcs/
+COPY resources/Merge.py udf_funcs/python_scripts/
+COPY resources/StoreEmbedding.py udf_funcs/python_scripts/
+COPY resources/EmbeddingUtils.py udf_funcs/python_scripts/
+COPY resources/BigModelUtils.py udf_funcs/python_scripts/
 COPY resources/ScheduledEmbedding.yml temp/
 
 COPY --chmod=755 resources/iginx.sh  iginx.sh

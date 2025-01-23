@@ -11,18 +11,25 @@
         display: list-item;
         cursor: pointer;
     }
+
+    .search-results {
+        margin-top: 10px;
+        border: 1px solid #ddd;
+        padding: 10px;
+        background-color: #fff;
+    }
 </style>
 
 <details>
     <summary class="data-property-summary">Data Property</summary>
-    <span class="labelBtn btn-group">
-        <button id="${paragraphId}_data_property_undo" type="button" class="btn btn-default btn-xs">undo</button>
-        <button id="${paragraphId}_data_property_redo" type="button" class="btn btn-default btn-xs">redo</button>
-    </span>
-    <label for="${paragraphId}_search_box">Match Word</label>
-    <input type="text" id="${paragraphId}_search_box" placeholder="Search..."/>
-    <button id="${paragraphId}_search_button" type="button">Search</button>
+    <label for="${paragraphId}_match_box">Match Word</label>
+    <input type="text" id="${paragraphId}_match_box" placeholder="Match..."/>
+    <button id="${paragraphId}_match_button" type="button" class="btn btn-default btn-xs">Match</button>
     <div id="${paragraphId}_data_property_container" class="data-property-container panel panel-default"></div>
+    <label for="${paragraphId}_search_box">Semantic Search</label>
+    <input type="text" id="${paragraphId}_search_box" placeholder="Search..."/>
+    <button id="${paragraphId}_search_button" type="button" class="btn btn-default btn-xs">Search</button>
+    <ul id="${paragraphId}_search_results" class="search-results"></ul>
 </details>
 
 <script>
@@ -57,9 +64,9 @@
         ##     }
         ## }
 
-        document.getElementById('${paragraphId}_search_button').onclick = () => {
+        document.getElementById('${paragraphId}_match_button').onclick = () => {
             console.debug('search');
-            const searchText = document.getElementById('${paragraphId}_search_box').value;
+            const searchText = document.getElementById('${paragraphId}_match_box').value;
             console.debug('searchText:', searchText);
             console.debug('graph:', graph);
 
@@ -113,7 +120,91 @@
             graph.render();
         }
 
-        graph.render();
+        class IginxExecutor {
+            _noteId;
+
+            constructor() {
+                this._noteId = window.location.hash.split('/')[2];
+            }
+
+            async execute(statement) {
+                const notebook = await this._getNotebook();
+                const lastParagraph = notebook.paragraphs.at(-1);
+
+                if (lastParagraph.text) {
+                    alert('Please create a empty paragraph in last of notebook to execute interpreter');
+                    throw new Error('Please create a empty paragraph in last of notebook to execute interpreter');
+                }
+                const paragraphId = lastParagraph.id;
+
+                await this._updateParagraph(paragraphId, '%iginx ' + statement);
+                const executeResult = await this._executeParagraph(paragraphId);
+
+                await this._updateParagraph(paragraphId, '%iginx >data.property.clear');
+                await this._executeParagraph(paragraphId);
+
+                await this._updateParagraph(paragraphId, '');
+                return executeResult;
+            }
+
+            async _getNotebook() {
+                const apiUrl = 'api/notebook/'+this._noteId;
+                const response = await fetch(apiUrl);
+                this._checkResponse(response);
+                return (await response.json()).body;
+            }
+
+            async _updateParagraph(paragraphId, statement) {
+                const apiUrl = 'api/notebook/' + this._noteId + '/paragraph/' + paragraphId;
+                const response = await fetch(apiUrl, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        text: statement,
+                    })
+                });
+                this._checkResponse(response);
+            }
+
+            async _executeParagraph(paragraphId) {
+                const apiUrl = 'api/notebook/run/' + this._noteId + '/' + paragraphId;
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                });
+                this._checkResponse(response);
+                return (await response.json()).body;
+            }
+
+            async _getParagraphResult(paragraphId) {
+                const apiUrl = 'api/notebook/' + this._noteId + '/paragraph/' + paragraphId;
+                const response = await fetch(apiUrl);
+                this._checkResponse(response);
+                return (await response.json()).body;
+            }
+
+            _checkResponse(response) {
+                if (!response.ok) {
+                    const msg = 'Status: ' + response.status + '. ' + response.statusText;
+                    alert(msg);
+                    throw new Error(msg);
+                }
+            }
+        }
+
+        document.getElementById('${paragraphId}_search_button').onclick = async () => {
+            executor = new IginxExecutor();
+            result = await executor.execute('>data.property.search ' + document.getElementById('${paragraphId}_search_box').value);
+            paths = JSON.parse(result.msg[0].data);
+            const searchResultsDiv = document.getElementById('${paragraphId}_search_results');
+            searchResultsDiv.innerHTML = '';
+            paths.forEach(path => {
+                const resultElement = document.createElement('li');
+                resultElement.textContent = path.join('.');
+                searchResultsDiv.appendChild(resultElement);
+            });
+        };
     }
 
     function createDataPropertyGraph() {
@@ -128,10 +219,7 @@
                 'drag-canvas',
                 'zoom-canvas',
                 'drag-element',
-                {
-                    type: 'collapse-expand',
-                    key: 'collapse-expand',
-                },
+                'collapse-expand',
             ],
             plugins: [
                 {

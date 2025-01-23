@@ -17,7 +17,7 @@ public class GraphData {
   public static class Builder {
     private final Map<Pair<String, String>, EdgeData> edgeMap = new HashMap<>();
     private final Map<String, Node> nodeMap = new HashMap<>();
-    private final String rootId = ".";
+    private final String rootId = "rootId";
     private final String rootLabel = "Data Property";
 
     public Builder() {
