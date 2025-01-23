@@ -3,4 +3,5 @@ UDSF,merge,UDFMerge,Merge.py
 UDSF,get_embedding,UDFGetEmbedding,EmbeddingUtils.py
 UDSF,ask_big_model,UDFAskBigModel,BigModelUtils.py
 UDSF,search_embedding,UDFSearchEmbedding,EmbeddingUtils.py
+UDSF,analyse_relation,UDFAnalyseRelation,EmbeddingUtils.py
 

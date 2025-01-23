@@ -1,6 +1,5 @@
 package org.apache.zeppelin.iginx.interpreter.dataproperty.network;
 
-import cn.edu.tsinghua.iginx.utils.StringUtils;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
@@ -10,7 +9,7 @@ import java.io.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.velocity.VelocityContext;
 import org.apache.zeppelin.iginx.interpreter.dataproperty.IginxDao;
 import org.apache.zeppelin.iginx.util.VelocityUtil;
@@ -70,9 +69,8 @@ public class NetworkService {
 
     String relationString = "";
     if (needRelation) {
-      addEmbedding(root);
-      calculateNodeRelation(root);
-      List<Relation> relationList = analyseNodeRelation();
+      //      addEmbedding(root);
+      List<Relation> relationList = calculateNodeRelation(root);
       relationString = JSON.toJSONString(relationList);
       LOGGER.info("the relationString is {}", relationString);
     }
@@ -100,8 +98,9 @@ public class NetworkService {
     JSONObject removeMap = new JSONObject();
 
     if (node.getExpanded()) {
-      collapseNode(node, addMap, removeMap);
-      node.setExpanded(false);
+      throw new IllegalStateException("Node is already expanded");
+      //      collapseNode(node, addMap, removeMap);
+      //      node.setExpanded(false);
     } else {
       expandNode(node, addMap);
       node.setExpanded(true);
@@ -242,9 +241,8 @@ public class NetworkService {
     JSONArray edges = new JSONArray();
     JSONArray links = new JSONArray();
     if (needRelation) {
-      addEmbedding(node);
-      calculateNodeRelation(node);
-      List<Relation> addRelations = analyseNodeRelation();
+      //      addEmbedding(node);
+      List<Relation> addRelations = calculateNodeRelation(node);
       links = getRelationLinks(addRelations);
     }
 
@@ -267,19 +265,19 @@ public class NetworkService {
     addMap.put("links", links);
   }
 
-  private void collapseNode(NetworkTreeNode node, JSONObject addMap, JSONObject removeMap) {
-    JSONArray nodes = new JSONArray();
-    for (NetworkTreeNode child : node.getChildren().values()) {
-      collectShownNodes(child, nodes);
-    }
-    removeMap.put("nodes", nodes);
-
-    if (needRelation) {
-      List<Relation> addRelations = analyseNodeRelation();
-      JSONArray links = getRelationLinks(addRelations);
-      addMap.put("links", links);
-    }
-  }
+  //  private void collapseNode(NetworkTreeNode node, JSONObject addMap, JSONObject removeMap) {
+  //    JSONArray nodes = new JSONArray();
+  //    for (NetworkTreeNode child : node.getChildren().values()) {
+  //      collectShownNodes(child, nodes);
+  //    }
+  //    removeMap.put("nodes", nodes);
+  //
+  //    if (needRelation) {
+  //      List<Relation> addRelations = analyseNodeRelation();
+  //      JSONArray links = getRelationLinks(addRelations);
+  //      addMap.put("links", links);
+  //    }
+  //  }
 
   private JSONArray getRelationLinks(List<Relation> addRelations) {
     JSONArray links = new JSONArray();
@@ -317,117 +315,60 @@ public class NetworkService {
     }
   }
 
-  private void calculateNodeRelation(NetworkTreeNode node) {
+  private List<Relation> calculateNodeRelation(NetworkTreeNode node) {
     LOGGER.info("calculateNodeRelation: nodeId is {}", node.getId());
-    if (node.getDepth() >= RELATION_DEPTH_LEVEL) return;
+    if (node.getDepth() >= RELATION_DEPTH_LEVEL) return new ArrayList<>();
     List<NetworkTreeNode> visibleNodes = getVisibleNodes();
     LOGGER.info("the size of visibleNodes is {}", visibleNodes.size());
+
+    List<String> sourcePaths = new ArrayList<>();
+    Map<String, String> sourceEmbeddingId2NetworkId = new HashMap<>();
     for (NetworkTreeNode childNode : node.getChildren().values()) {
-      if (childNode.getEmbedding() == null) {
-        LOGGER.info("the embedding of node is null: {}", childNode.getId());
-        continue;
-      }
-      for (NetworkTreeNode visibleNode : visibleNodes) {
-        if (visibleNode.getEmbedding() == null) {
-          LOGGER.info("the embedding of visibleNode is null: {}", visibleNode.getId());
-          continue;
-        }
-        String rootId1 = getRootId(childNode.getNetworkId());
-        String rootId2 = getRootId(visibleNode.getNetworkId());
-        if (StringUtils.isEqual(rootId1, rootId2)) {
-          continue;
-        }
-
-        String bucket = getKeyWithIds(rootId1, rootId2);
-        if (!this.relationMap.containsKey(bucket)) {
-          Map<String, Relation> map = new HashMap<>();
-          this.relationMap.put(bucket, map);
-        }
-
-        String key = getKeyWithIds(childNode.getNetworkId(), visibleNode.getNetworkId());
-        Map<String, Relation> bucketMap = this.relationMap.get(bucket);
-        if (!bucketMap.containsKey(key)) {
-          Double score = cosineSimilarity(childNode.getEmbedding(), visibleNode.getEmbedding());
-          Relation relation =
-              new Relation(childNode.getNetworkId(), visibleNode.getNetworkId(), score);
-          bucketMap.put(key, relation);
-        }
-      }
+      sourcePaths.add(childNode.getEmbeddingId());
+      sourceEmbeddingId2NetworkId.put(childNode.getEmbeddingId(), childNode.getNetworkId());
     }
-    LOGGER.info("now relationMap is {}", relationMap);
-  }
 
-  private List<Relation> analyseNodeRelation() {
+    List<String> targetPaths = new ArrayList<>();
+    Map<String, String> targetEmbeddingId2NetworkId = new HashMap<>();
+    for (NetworkTreeNode visibleNode : visibleNodes) {
+      targetPaths.add(visibleNode.getEmbeddingId());
+      targetEmbeddingId2NetworkId.put(visibleNode.getEmbeddingId(), visibleNode.getNetworkId());
+    }
+
+    List<Relation> addRelations = new ArrayList<>();
+    Map<Pair<String, String>, Double> relationMaps =
+        iginx.analyseMainRelation(sourcePaths, targetPaths);
+    for (Map.Entry<Pair<String, String>, Double> entry : relationMaps.entrySet()) {
+      String sourceEmbeddingId = entry.getKey().getLeft();
+      String targetEmbeddingId = entry.getKey().getRight();
+      double score = entry.getValue();
+
+      String from = sourceEmbeddingId2NetworkId.get(sourceEmbeddingId);
+      String to = targetEmbeddingId2NetworkId.get(targetEmbeddingId);
+
+      if (from == null || to == null) {
+        throw new IllegalStateException(
+            "Node not found for embeddingId: " + sourceEmbeddingId + " or " + targetEmbeddingId);
+      }
+
+      Relation relation = new Relation(from, to, score);
+      addRelations.add(relation);
+    }
+
     LOGGER.info("analyseNodeRelation");
-    // 使用并行流来处理 relationMap
-    List<Relation> addRelations =
-        relationMap
-            .values()
-            .parallelStream()
-            .map(
-                innerMap -> {
-                  Relation bestRelation =
-                      innerMap.values().stream()
-                          .max(Comparator.comparingDouble(Relation::getScore))
-                          .orElse(null);
-                  if (bestRelation != null && bestRelation.getScore() > RELATION_THRESHOLD) {
-                    if (bestRelation.getRelation().isEmpty()) {
-                      String[] parts1 = bestRelation.getFrom().split("\\.");
-                      String[] parts2 = bestRelation.getTo().split("\\.");
-                      String name1 = parts1[parts1.length - 1];
-                      String name2 = parts2[parts2.length - 1];
-                      String relation = iginx.askRelation(name1, name2);
-                      bestRelation.setRelation(relation);
-                    }
-                    return bestRelation;
-                  }
-                  return null;
-                })
-            .filter(Objects::nonNull) // 过滤掉 null 值
-            .collect(Collectors.toList());
-    LOGGER.info("finish analyseNodeRelation, the size of links is {}", addRelations.size());
+    addRelations
+        .parallelStream()
+        .forEach(
+            relation -> {
+              String[] parts1 = relation.getFrom().split("\\.");
+              String[] parts2 = relation.getTo().split("\\.");
+              String name1 = parts1[parts1.length - 1];
+              String name2 = parts2[parts2.length - 1];
+              String relationMsg = iginx.askRelation(name1, name2);
+              relation.setRelation(relationMsg);
+            });
+
     return addRelations;
-  }
-
-  public static String getRootId(String str) {
-    String[] parts = str.split("\\.");
-    if (parts.length < 2) {
-      throw new IllegalArgumentException("输入字符串格式不正确");
-    }
-    return parts[0] + "." + parts[1];
-  }
-
-  public static String getKeyWithIds(String a, String b) {
-    return a.compareTo(b) < 0 ? a + "-" + b : b + "-" + a;
-  }
-
-  private Double cosineSimilarity(float[] embedding1, float[] embedding2) {
-    if (embedding1 == null || embedding2 == null) {
-      throw new IllegalArgumentException("embedding不能为空");
-    }
-    if (embedding1.length != embedding2.length) {
-      throw new IllegalArgumentException("两个向量的维度必须相同");
-    }
-    // 点积计算
-    double dotProduct =
-        IntStream.range(0, embedding1.length)
-            .parallel()
-            .mapToDouble(i -> embedding1[i] * embedding2[i])
-            .sum();
-    // 向量模长计算
-    double magnitude1 =
-        Math.sqrt(
-            IntStream.range(0, embedding1.length)
-                .parallel()
-                .mapToDouble(i -> embedding1[i] * embedding1[i])
-                .sum());
-    double magnitude2 =
-        Math.sqrt(
-            IntStream.range(0, embedding2.length)
-                .parallel()
-                .mapToDouble(i -> embedding2[i] * embedding2[i])
-                .sum());
-    return dotProduct / (magnitude1 * magnitude2);
   }
 
   private List<NetworkTreeNode> getVisibleNodes() {

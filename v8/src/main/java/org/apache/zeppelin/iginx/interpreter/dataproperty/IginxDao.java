@@ -16,6 +16,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import org.apache.commons.lang3.tuple.Pair;
 
 public class IginxDao {
   private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -202,5 +203,49 @@ public class IginxDao {
       paths.add(pathSepDot.split("\\."));
     }
     return paths;
+  }
+
+  public Map<Pair<String, String>, Double> analyseMainRelation(
+      List<String> sourcePaths, List<String> targetPaths) {
+    ArrayNode sourceArrayNode = MAPPER.createArrayNode();
+    for (String sourcePath : sourcePaths) {
+      sourceArrayNode.add(sourcePath);
+    }
+    String sourcePathsJson = sourceArrayNode.toString();
+
+    ArrayNode targetArrayNode = MAPPER.createArrayNode();
+    for (String targetPath : targetPaths) {
+      targetArrayNode.add(targetPath);
+    }
+    String targetPathsJson = targetArrayNode.toString();
+
+    String sql =
+        "select `analyse_relation(source)` as source, `analyse_relation(target)` as target, `analyse_relation(score)` as score"
+            + " from (select analyse_relation(*, sources='"
+            + sourcePathsJson
+            + "', targets='"
+            + targetPathsJson
+            + "', host='"
+            + milvusHost
+            + "', port='"
+            + milvusPort
+            + "') from (show columns ###));";
+
+    SessionExecuteSqlResult sqlResult;
+    try {
+      sqlResult = session.executeSql(sql);
+    } catch (SessionException e) {
+      throw new RuntimeException("Failed to execute SQL: " + sql, e);
+    }
+
+    Map<Pair<String, String>, Double> resultMap = new HashMap<>();
+    List<List<Object>> queryList = sqlResult.getValues();
+    for (List<Object> row : queryList) {
+      String source = new String((byte[]) row.get(0), StandardCharsets.UTF_8);
+      String target = new String((byte[]) row.get(1), StandardCharsets.UTF_8);
+      double score = (double) row.get(2);
+      resultMap.put(Pair.of(source, target), score);
+    }
+    return resultMap;
   }
 }

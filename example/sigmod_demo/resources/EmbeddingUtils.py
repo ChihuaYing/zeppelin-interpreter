@@ -1,6 +1,9 @@
+import json
+
 from pymilvus import connections, Collection
 import numpy as np
 from sentence_transformers import SentenceTransformer
+import pandas as pd
 
 class SentenceTransformerAccessor:
     def __init__(self, name_or_path="bert-base-chinese"):
@@ -51,6 +54,19 @@ class MilvusDao:
         )
 
         return [ hit.fields["path"] for hit in entities[0] ]
+
+    # TODO 后面需要 使用 cosine 相似度
+    def bulk_search_similarity(self, embedding_list, path_list_json):
+        entities = self.collection.search(
+            data=embedding_list,
+            anns_field="embedding",
+            output_fields=["path"],
+            limit=10,
+            param={"metric_type": "L2"},
+            expr="path in " + path_list_json
+        )
+
+        return [[(hit.fields["path"], hit.distance) for hit in entity] for entity in entities]
 
 
 class UDFGetEmbedding:
@@ -105,15 +121,75 @@ class UDFSearchEmbedding:
 
         return result
 
+# if __name__ == '__main__':
+#     # 本地测试
+#     udf = UDFSearchEmbedding()
+#     data = None
+#     args = None
+#     kvargs = {
+#         "host": "localhost".encode("utf-8"),
+#         "port": "19530".encode("utf-8"),
+#         "description": "订单".encode("utf-8")
+#     }
+#     result = udf.transform(data, args, kvargs)
+#     print(result)
+
+
+class UDFAnalyseRelation:
+    def __init__(self):
+        pass
+
+    def transform(self, data, args, kvargs):
+        print("enter UDFAnalyseRelation success")
+        sources_json = kvargs["sources"].decode("utf-8")
+        targets_json = kvargs["targets"].decode("utf-8")
+
+        dao = MilvusDao(kvargs)
+        source_embeddings = dao.get_embedding(sources_json)
+        source_paths = list(source_embeddings.keys())
+        source_embeddings = list(source_embeddings.values())
+        result = dao.bulk_search_similarity(source_embeddings, targets_json)
+        relations = [
+            (source_path, target_path, similarity)
+            for i, source_path in enumerate(source_paths)
+            for target_path, similarity in result[i]
+        ]
+        # Create a DataFrame from the relations list with columns: source, target, and similarity
+        df = pd.DataFrame(relations, columns=["source", "target", "similarity"])
+
+        # Filter out records with similarity less than or equal to 100
+        df = df[df['similarity'] > 100]
+
+        # Extract the root part (before the first dot) from source and target columns
+        df['source_root'] = df['source'].str.split('.').str[0]
+        df['target_root'] = df['target'].str.split('.').str[0]
+
+        # Filter out records where source_root and target_root are the same
+        df = df[df['source_root'] != df['target_root']]
+
+        # Find the maximum similarity for each unique pair of source_root and target_root
+        max_similarities = df.loc[df.groupby([df[['source_root', 'target_root']].apply(frozenset, axis=1)])['similarity'].idxmax()]
+
+        # Select only the source, target, and similarity columns from the DataFrame
+        relations = max_similarities[['source', 'target', 'similarity']]
+
+        # Encode the source and target columns as UTF-8
+        relations.loc[:, 'source'] = relations['source'].str.encode('utf-8')
+        relations.loc[:, 'target'] = relations['target'].str.encode('utf-8')
+
+        # Return the final result as a list of lists, including headers and data types
+        return [["(source)", "(target)", "(score)"], ['BINARY', 'BINARY', 'DOUBLE']] + relations.values.tolist()
+
 if __name__ == '__main__':
     # 本地测试
-    udf = UDFSearchEmbedding()
+    udf = UDFAnalyseRelation()
     data = None
     args = None
     kvargs = {
         "host": "localhost".encode("utf-8"),
         "port": "19530".encode("utf-8"),
-        "description": "订单".encode("utf-8")
+        "sources": '["region.r_regionkey", "region.r_name", "region.r_comment", "supplier.s_phone"]'.encode("utf-8"),
+        "targets": '["supplier.s_suppkey", "supplier.s_name", "supplier.s_address", "nation.n_name", "nation.n_comment", "part", "customer", "orders", "lineitem"]'.encode("utf-8")
     }
     result = udf.transform(data, args, kvargs)
     print(result)
