@@ -44,13 +44,14 @@ class MilvusDao:
 
         return embedding_each_path
 
-    def search_similarity(self, embedding):
+    def search_similarity(self, embedding, path_list_json):
         entities = self.collection.search(
             data=[embedding],
             anns_field="embedding",
             output_fields=["path"],
             limit=10,
             param={"metric_type": "L2"},
+            expr="path in " + path_list_json
         )
 
         return [ hit.fields["path"] for hit in entities[0] ]
@@ -61,7 +62,7 @@ class MilvusDao:
             data=embedding_list,
             anns_field="embedding",
             output_fields=["path"],
-            limit=10,
+            limit = 100,
             param={"metric_type": "L2"},
             expr="path in " + path_list_json
         )
@@ -87,18 +88,18 @@ class UDFGetEmbedding:
             result.append([path.encode('utf-8'), embedding_bytes])
         return result
 
-# if __name__ == '__main__':
-#     # 本地测试
-#     udf = UDFGetEmbedding()
-#     data = None
-#     args = None
-#     kvargs = {
-#         "host": "localhost".encode("utf-8"),
-#         "port": "19530".encode("utf-8"),
-#         "nodes": '["region", "nation", "part", "supplier", "customer", "orders", "lineitem"]'.encode("utf-8")
-#     }
-#     result = udf.transform(data, args, kvargs)
-#     print(result)
+if __name__ == '__main__':
+    # 本地测试
+    udf = UDFGetEmbedding()
+    data = None
+    args = None
+    kvargs = {
+        "host": "localhost".encode("utf-8"),
+        "port": "19530".encode("utf-8"),
+        "nodes": '["region", "nation", "part", "supplier", "customer", "orders", "lineitem"]'.encode("utf-8")
+    }
+    result = udf.transform(data, args, kvargs)
+    print(result)
 
 
 class UDFSearchEmbedding:
@@ -106,14 +107,15 @@ class UDFSearchEmbedding:
         pass
 
     def transform(self, data, args, kvargs):
-        print("enter UDFSearchEmbedding success")
+        print("enter UDFSearchEmbedding success：", kvargs)
         description = kvargs["description"].decode("utf-8")
+        paths_json = kvargs["paths"].decode("utf-8")
 
         dao = MilvusDao(kvargs)
         model = SentenceTransformerAccessor()
 
         embedding = model.encode(description)
-        paths = dao.search_similarity(embedding)
+        paths = dao.search_similarity(embedding, paths_json)
 
         result = [["(path)"], ['BINARY']]
         for path in paths:
@@ -121,18 +123,19 @@ class UDFSearchEmbedding:
 
         return result
 
-# if __name__ == '__main__':
-#     # 本地测试
-#     udf = UDFSearchEmbedding()
-#     data = None
-#     args = None
-#     kvargs = {
-#         "host": "localhost".encode("utf-8"),
-#         "port": "19530".encode("utf-8"),
-#         "description": "订单".encode("utf-8")
-#     }
-#     result = udf.transform(data, args, kvargs)
-#     print(result)
+if __name__ == '__main__':
+    # 本地测试
+    udf = UDFSearchEmbedding()
+    data = None
+    args = None
+    kvargs = {
+        "host": "localhost".encode("utf-8"),
+        "port": "19530".encode("utf-8"),
+        "description": "订单".encode("utf-8"),
+        "paths": '["region.r_regionkey", "region.r_name", "region.r_comment", "supplier.s_phone"]'.encode("utf-8")
+    }
+    result = udf.transform(data, args, kvargs)
+    print(result)
 
 
 class UDFAnalyseRelation:

@@ -15,6 +15,9 @@
 
 <details>
     <summary>Data Property</summary>
+    <label for="${paragraphId}_search_box">Semantic Search:</label>
+    <input type="text" id="${paragraphId}_search_box" placeholder="Search..."/>
+    <button id="${paragraphId}_search_button" type="button" class="btn btn-default btn-xs">Search</button>
     <div id="${paragraphId}_iframe_container" class="panel panel-default" style="display: block">
         <div id="${paragraphId}_single_container" class="panel-body"></div>
     </div>
@@ -328,5 +331,30 @@
             console.log(data.nodes.get());
             console.log(data.edges.get());
         }
+
+        document.getElementById('${paragraphId}_search_button').onclick = async () => {
+            const executor = new IginxExecutor();
+            const result = await executor.execute('>data.property.search ${paragraphId} ' + document.getElementById('${paragraphId}_search_box').value);
+            const networkNodeIds = JSON.parse(result.msg[0].data);
+            console.log('networkNodeIds:', networkNodeIds);
+            data.nodes.forEach(node => {
+                data.nodes.update({
+                    id: node.id,
+                    color: {
+                        background: '#ffffff',
+                        border: '#000000'
+                    }
+                });
+            });
+            networkNodeIds.forEach(nodeId => {
+                data.nodes.update({
+                    id: nodeId,
+                    color: {
+                        background: '#ffeb3b',
+                        border: '#fbc02d'
+                    }
+                });
+            });
+        };
     })();
 </script>

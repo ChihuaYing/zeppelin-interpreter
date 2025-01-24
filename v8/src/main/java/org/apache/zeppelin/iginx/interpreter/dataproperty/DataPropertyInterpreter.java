@@ -3,7 +3,6 @@ package org.apache.zeppelin.iginx.interpreter.dataproperty;
 import cn.edu.tsinghua.iginx.session.Session;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.google.common.base.Preconditions;
 import java.util.*;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -22,7 +21,7 @@ public class DataPropertyInterpreter {
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
   private final Map<String, NetworkService> networkMap = new HashMap<>();
-  private static final String STATEMENT_PREFIX = ">data.property";
+  private static final String INTERNAL_STATEMENT_PREFIX = ">data.property";
 
   private final IginxDao iginx;
 
@@ -31,7 +30,19 @@ public class DataPropertyInterpreter {
   }
 
   public boolean canInterpret(String sql, InterpreterContext context) {
-    return sql.trim().startsWith(STATEMENT_PREFIX);
+    switch (sql.trim()) {
+      case ">network.asset.data":
+      case ">network.asset.data.grouping":
+      case ">network":
+      case ">network.grouping":
+      case ">tree":
+      case INTERNAL_STATEMENT_PREFIX + ".expand":
+      case INTERNAL_STATEMENT_PREFIX + ".search":
+      case INTERNAL_STATEMENT_PREFIX + ".clear":
+        return true;
+      default:
+        return false;
+    }
   }
 
   public InterpreterResult interpret(String statement, InterpreterContext context) {
@@ -42,19 +53,19 @@ public class DataPropertyInterpreter {
 
     try {
       switch (cmd) {
-        case STATEMENT_PREFIX:
-        case STATEMENT_PREFIX + ".network":
+        case ">network.asset.data":
+        case ">network":
           return displayDataPropertyGraph(context, args, false);
-        case STATEMENT_PREFIX + ".grouping":
-        case STATEMENT_PREFIX + ".grouping.network":
+        case "network.asset.data.grouping":
+        case "network.grouping":
           return displayDataPropertyGraph(context, args, true);
-        case STATEMENT_PREFIX + ".tree":
+        case ">tree":
           return displayDataPropertyTree(context, args);
-        case STATEMENT_PREFIX + ".expand":
+        case INTERNAL_STATEMENT_PREFIX + ".expand":
           return expandDataPropertyGraph(args);
-        case STATEMENT_PREFIX + ".search":
+        case INTERNAL_STATEMENT_PREFIX + ".search":
           return searchDataProperty(args);
-        case STATEMENT_PREFIX + ".clear":
+        case INTERNAL_STATEMENT_PREFIX + ".clear":
           return new InterpreterResult(
               InterpreterResult.Code.SUCCESS, InterpreterResult.Type.TEXT, "");
         default:
@@ -114,21 +125,16 @@ public class DataPropertyInterpreter {
   }
 
   private InterpreterResult searchDataProperty(String[] args) {
-    if (args.length == 0) {
+    if (args.length < 2) {
       return new InterpreterResult(InterpreterResult.Code.ERROR, "Empty search description");
     }
-    String description = String.join(" ", args);
+    String paragraphId = args[0];
+    String description = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
 
-    List<String[]> paths = iginx.search(description);
-    ArrayNode pathsJson = MAPPER.createArrayNode();
-    for (String[] path : paths) {
-      ArrayNode pathJson = MAPPER.createArrayNode();
-      for (String node : path) {
-        pathJson.add(node);
-      }
-      pathsJson.add(pathJson);
-    }
-    return new InterpreterResult(
-        InterpreterResult.Code.SUCCESS, InterpreterResult.Type.TEXT, pathsJson.toString());
+    NetworkService networkService = networkMap.get(paragraphId);
+    Preconditions.checkNotNull(networkService, "Network service not found: " + paragraphId);
+
+    String msg = networkService.handleSearch(description);
+    return new InterpreterResult(InterpreterResult.Code.SUCCESS, InterpreterResult.Type.TEXT, msg);
   }
 }

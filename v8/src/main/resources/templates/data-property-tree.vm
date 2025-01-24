@@ -192,19 +192,6 @@
                 }
             }
         }
-
-        document.getElementById('${paragraphId}_search_button').onclick = async () => {
-            executor = new IginxExecutor();
-            result = await executor.execute('>data.property.search ' + document.getElementById('${paragraphId}_search_box').value);
-            paths = JSON.parse(result.msg[0].data);
-            const searchResultsDiv = document.getElementById('${paragraphId}_search_results');
-            searchResultsDiv.innerHTML = '';
-            paths.forEach(path => {
-                const resultElement = document.createElement('li');
-                resultElement.textContent = path.join('.');
-                searchResultsDiv.appendChild(resultElement);
-            });
-        };
     }
 
     function createDataPropertyGraph() {

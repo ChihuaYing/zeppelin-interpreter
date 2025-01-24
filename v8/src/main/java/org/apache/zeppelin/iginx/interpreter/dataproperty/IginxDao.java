@@ -180,10 +180,18 @@ public class IginxDao {
     throw new IllegalStateException("The result of ask_big_model is empty: " + sql);
   }
 
-  public List<String[]> search(String description) {
+  public List<String> search(List<String> visiblePaths, String description) {
+    ArrayNode arrayNode = MAPPER.createArrayNode();
+    for (String path : visiblePaths) {
+      arrayNode.add(path);
+    }
+    String pathsJson = arrayNode.toString();
+
     String sql =
         "select search_embedding(*, description='"
             + description
+            + "', paths='"
+            + pathsJson
             + "', host='"
             + milvusHost
             + "', port='"
@@ -197,10 +205,10 @@ public class IginxDao {
       throw new RuntimeException("Failed to execute SQL: " + sql, e);
     }
 
-    List<String[]> paths = new ArrayList<>();
+    List<String> paths = new ArrayList<>();
     for (List<Object> row : sqlResult.getValues()) {
       String pathSepDot = new String((byte[]) row.get(0), StandardCharsets.UTF_8);
-      paths.add(pathSepDot.split("\\."));
+      paths.add(pathSepDot);
     }
     return paths;
   }

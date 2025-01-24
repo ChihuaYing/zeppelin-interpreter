@@ -4,6 +4,8 @@ import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
 import com.alibaba.fastjson2.filter.PropertyFilter;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.google.common.collect.Multimap;
 import java.io.*;
 import java.util.*;
@@ -21,6 +23,8 @@ public class NetworkService {
   private static final Double RELATION_THRESHOLD = 0.8; // 关系阈值
   private static final Integer RELATION_DEPTH_LEVEL = 3; // 关系深度层级
   private static final Integer MERGE_MIN_SIZE = 5; // 需要聚类的最小值
+
+  private static final ObjectMapper MAPPER = new ObjectMapper();
 
   private Boolean needMerge; // 是否需要合并
   private Boolean needRelation; // 是否需要计算关系
@@ -386,5 +390,27 @@ public class NetworkService {
         getVisibleNodes(childNode, result);
       }
     }
+  }
+
+  public String handleSearch(String description) {
+    List<NetworkTreeNode> visibleNodes = getVisibleNodes();
+
+    List<String> visiblePaths = new ArrayList<>();
+    Map<String, String> embeddingId2NetworkId = new HashMap<>();
+    for (NetworkTreeNode childNode : visibleNodes) {
+      visiblePaths.add(childNode.getEmbeddingId());
+      embeddingId2NetworkId.put(childNode.getEmbeddingId(), childNode.getNetworkId());
+    }
+
+    List<String> paths = iginx.search(visiblePaths, description);
+    ArrayNode pathsJson = MAPPER.createArrayNode();
+    for (String path : paths) {
+      String networkId = embeddingId2NetworkId.get(path);
+      if (networkId == null) {
+        throw new IllegalStateException("Node not found for embeddingId: " + path);
+      }
+      pathsJson.add(networkId);
+    }
+    return pathsJson.toString();
   }
 }
