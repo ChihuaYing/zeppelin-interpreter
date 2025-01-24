@@ -30,7 +30,8 @@ public class DataPropertyInterpreter {
   }
 
   public boolean canInterpret(String sql, InterpreterContext context) {
-    switch (sql.trim()) {
+    String cmd = sql.trim().split(" ")[0];
+    switch (cmd) {
       case ">network.asset.data":
       case ">network.asset.data.grouping":
       case ">network":
@@ -56,8 +57,8 @@ public class DataPropertyInterpreter {
         case ">network.asset.data":
         case ">network":
           return displayDataPropertyGraph(context, args, false);
-        case "network.asset.data.grouping":
-        case "network.grouping":
+        case ">network.asset.data.grouping":
+        case ">network.grouping":
           return displayDataPropertyGraph(context, args, true);
         case ">tree":
           return displayDataPropertyTree(context, args);
