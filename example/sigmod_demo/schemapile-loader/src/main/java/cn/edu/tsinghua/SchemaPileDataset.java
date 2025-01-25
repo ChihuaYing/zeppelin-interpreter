@@ -23,7 +23,7 @@ public class SchemaPileDataset {
   public static final int IGINX_PORT = 6888;
   public static final int BATCH_SIZE = 1000;
 
-  private final List<IginxColumn> data;
+  protected final List<IginxColumn> data;
 
   interface SessionFactory {
     Session createSession() throws SessionException;

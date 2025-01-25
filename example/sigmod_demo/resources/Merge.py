@@ -1,3 +1,4 @@
+import math
 import traceback
 
 import numpy as np
@@ -152,7 +153,7 @@ class Aggregator:
 
         optimal_n_clusters, labels, silhouette_avg = self.find_optimal_clusters(
             similarity_matrix=similarity_matrix,
-            max_clusters=max(int(len(root_nodes) / 2), 3)
+            max_clusters=max(int(math.sqrt(len(root_nodes)) * 1.5), 3)
         )
         print(f"最优聚类数: {optimal_n_clusters}")
         print(f"轮廓系数: {silhouette_avg}")

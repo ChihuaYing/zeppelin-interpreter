@@ -67,7 +67,7 @@ public class SchemaPile {
           if (values == null || values.isEmpty()) {
             continue;
           }
-          String pathName = escapePath(prefix + "." + tableName + "." + columnName);
+          String pathName = escapeSource(prefix) + "." + escapeTableOrColumn(tableName) + "." + escapeTableOrColumn(columnName);
           if (!paths.add(pathName)) {
             continue;
           }
@@ -87,8 +87,15 @@ public class SchemaPile {
     return result;
   }
 
-  private String escapePath(String path) {
+  private String escapeSource(String path) {
     path = path.replaceAll("[^0-9a-zA-Z.]", "_");
+    // 替换 time 为 time_ 不区分大小写
+    path = path.replaceAll("(?i)time", "time_");
+    return path;
+  }
+
+  private String escapeTableOrColumn(String path) {
+    path = path.replaceAll("[^0-9a-zA-Z]", "_");
     // 替换 time 为 time_ 不区分大小写
     path = path.replaceAll("(?i)time", "time_");
     return path;

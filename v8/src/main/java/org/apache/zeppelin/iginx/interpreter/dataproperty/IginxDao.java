@@ -175,7 +175,7 @@ public class IginxDao {
 
     List<List<Object>> queryList = sqlResult.getValues();
     for (List<Object> row : queryList) {
-      return new String((byte[]) row.get(0), StandardCharsets.UTF_8);
+      return new String((byte[]) row.get(0), StandardCharsets.UTF_8).replace("\"", "");
     }
     throw new IllegalStateException("The result of ask_big_model is empty: " + sql);
   }
