@@ -1,3 +1,4 @@
+import json
 import shelve
 from collections import defaultdict
 
@@ -7,7 +8,12 @@ from pymilvus.orm import utility
 from sentence_transformers import SentenceTransformer
 import pandas as pd
 import tqdm
-
+from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.metrics import silhouette_score
+from sklearn.cluster import KMeans
+from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
+import math
 
 class Encoder:
     def __init__(self):
@@ -37,13 +43,13 @@ class EmbeddingCalculator:
         self.embeddings.__exit__(type, value, trace)
         print("Closed")
 
-    def calculate(self, tree:dict[str, set], root:str) -> dict[str, np.array(np.float32)]:
-        print("Calculating embeddings for", len(tree), "paths")
+    def calculate_leaf(self, leaf_paths: list[str]) -> list[np.array(np.float32)]:
+        print("Calculating leaf embeddings for", len(leaf_paths), "paths")
 
-        uncached_paths = [path for path in tqdm.tqdm(tree.keys(), desc="Finding uncached path") if path not in self.embeddings]
+        uncached_paths = [path for path in tqdm.tqdm(leaf_paths, desc="Finding uncached path") if path not in self.embeddings]
         print("Uncached paths:", len(uncached_paths))
 
-        with tqdm.tqdm(total=len(uncached_paths), desc="Calculating uncached paths embeddings") as pbar:
+        with tqdm.tqdm(total=len(leaf_paths), desc="Calculating embeddings") as pbar:
             for i in range(0, len(uncached_paths), self.batch_size):
                 path_batch = uncached_paths[i:i + self.batch_size]
                 description_batch = [self._get_path_description(path) for path in path_batch]
@@ -52,6 +58,11 @@ class EmbeddingCalculator:
                     self.embeddings[path] = embedding
                 self.embeddings.sync()
                 pbar.update(len(path_batch))
+
+        return [self.embeddings[path] for path in tqdm.tqdm(leaf_paths, desc="Loading leaf path from cache")]
+
+    def calculate(self, tree:dict[str, set], root:str) -> dict[str, np.array(np.float32)]:
+        self.calculate_leaf(list(tree.keys()))
 
         cal_result = {}
         with tqdm.tqdm(total=len(tree), desc="Loading leaf path from cache and Calculating inner path embeddings") as pbar:
@@ -130,24 +141,6 @@ class MilvusDao:
 
     def load(self):
         self.collection.load()
-
-    def get_embedding(self, path_list_json):
-        entities_iter = self.collection.query_iterator(
-            expr="path in " + path_list_json,
-            output_fields=["path", "embedding"]
-        )
-
-        embedding_each_path = {}
-        while True:
-            entities = entities_iter.next()
-            if not entities:
-                break
-            for entity in entities:
-                path = entity["path"]
-                embedding = entity["embedding"]
-                embedding_each_path[path] = embedding
-
-        return embedding_each_path
 
     def search_similarity(self, embedding, path_list_json):
         entities = self.collection.search(
@@ -240,37 +233,6 @@ if __name__ == '__main__':
     print(result)
 
 
-class UDFGetEmbedding:
-    def __init__(self):
-        pass
-
-    def transform(self, data, args, kvargs):
-        print("enter UDFGetEmbedding success")
-        path_list_json = kvargs["nodes"].decode("utf-8")
-
-        dao = MilvusDao(kvargs)
-
-        embedding_each_path = dao.get_embedding(path_list_json)
-
-        result = [["(path)", "(embedding)"], ['BINARY', 'BINARY']]
-        for path, embedding in embedding_each_path.items():
-            embedding_bytes = np.array(embedding, dtype="<f4").tobytes()
-            result.append([path.encode('utf-8'), embedding_bytes])
-        return result
-
-
-if __name__ == '__main__':
-    # 本地测试
-    udf = UDFGetEmbedding()
-    kvargs = {
-        "host": "localhost".encode("utf-8"),
-        "port": "19530".encode("utf-8"),
-        "nodes": '["region", "nation", "part", "supplier", "customer", "orders", "lineitem"]'.encode("utf-8")
-    }
-    result = udf.transform(None, None, kvargs)
-    print(result)
-
-
 class UDFSearchEmbedding:
     def __init__(self):
         pass
@@ -317,15 +279,19 @@ class UDFAnalyseRelation:
         sources_json = kvargs["sources"].decode("utf-8")
         targets_json = kvargs["targets"].decode("utf-8")
 
+        source_paths = json.loads(sources_json)
+        print("Calculating embeddings for sources:", len(source_paths))
+
+        with EmbeddingCalculator() as ec:
+            source_embeddings = ec.calculate_leaf(source_paths)
+
         dao = MilvusDao(kvargs)
-        source_embeddings = dao.get_embedding(sources_json)
-        source_paths = list(source_embeddings.keys())
-        source_embeddings = list(source_embeddings.values())
-        result = dao.bulk_search_similarity(source_embeddings, targets_json)
+
+        search_result = dao.bulk_search_similarity(source_embeddings, targets_json)
         relations = [
             (source_path, target_path, similarity)
             for i, source_path in enumerate(source_paths)
-            for target_path, similarity in result[i]
+            for target_path, similarity in search_result[i]
         ]
         # Create a DataFrame from the relations list with columns: source, target, and similarity
         df = pd.DataFrame(relations, columns=["source", "target", "similarity"])
@@ -366,3 +332,171 @@ if __name__ == '__main__':
     }
     result = udf.transform(data, args, kvargs)
     print(result)
+
+class Node:
+    def __init__(self, path='', embedding=None):
+        self.path = path
+        self.embedding = embedding if embedding is not None and embedding.size > 0 else np.array([])
+
+
+class Aggregator:
+    def __init__(self, threshold=0.8, n_clusters=8, pca_components=50, tsne_components=3):
+        self.threshold = threshold
+        self.n_clusters = n_clusters
+        self.pca_components = pca_components
+        self.tsne_components = tsne_components
+
+    def compute_similarity_matrix(self, embeddings):
+        # embeddings = [node.embedding for node in nodes]
+        similarity_matrix = cosine_similarity(embeddings)
+        return similarity_matrix
+
+    def calculate_silhouette_score(self, similarity_matrix, labels):
+        """
+        计算聚类的轮廓系数。
+        """
+        distance_matrix = 1 - similarity_matrix
+        distance_matrix = (distance_matrix + distance_matrix.T) / 2
+        np.fill_diagonal(distance_matrix, 0)
+        distance_matrix = np.maximum(0, distance_matrix)
+        try:
+            silhouette_avg = silhouette_score(distance_matrix, labels, metric='precomputed')
+            return silhouette_avg
+        except ValueError:
+            return -1.0
+
+    def calculate_avg_similarity(self, nodes, labels):
+        """
+        计算聚类内的平均相似度。
+        """
+        avg_similarity = 0
+        total_pairs = 0
+        for label in np.unique(labels):  # 遍历每个簇
+            indices = np.where(labels == label)[0]
+            for i in range(len(indices)):
+                for j in range(i + 1, len(indices)):
+                    node_i = nodes[indices[i]]
+                    node_j = nodes[indices[j]]
+                    similarity = cosine_similarity([node_i.embedding], [node_j.embedding])[0][0]
+                    avg_similarity += similarity
+                    total_pairs += 1
+        if total_pairs > 0:
+            return avg_similarity / total_pairs
+        return 0
+
+    def calculate_cluster_separation(self, similarity_matrix, labels):
+        cluster_separation = 0
+        unique_labels = np.unique(labels)
+        num_clusters = len(unique_labels)
+        for i in range(num_clusters):
+            for j in range(i + 1, num_clusters):
+                cluster_i = np.where(labels == unique_labels[i])[0]
+                cluster_j = np.where(labels == unique_labels[j])[0]
+                # 类间的平均距离
+                inter_cluster_distance = np.mean([1 - similarity_matrix[x][y] for x in cluster_i for y in cluster_j])
+                cluster_separation += inter_cluster_distance
+        return cluster_separation / (num_clusters * (num_clusters - 1) / 2 if num_clusters > 1 else 1)
+
+    def find_optimal_clusters(self, similarity_matrix, max_clusters=5):
+        """
+        自动选择最优的聚类数，根据轮廓系数。
+        返回最优聚类数、对应的 labels 和最大轮廓系数。
+        """
+        best_score = -1
+        best_n_clusters = self.n_clusters
+        best_labels = None
+
+        for n_clusters in range(3, max_clusters + 1):
+            kmeans = KMeans(n_clusters=n_clusters, random_state=0)
+            kmeans.fit(similarity_matrix)
+            labels = kmeans.labels_
+            silhouette_avg = self.calculate_silhouette_score(similarity_matrix, labels)
+            print(f"聚类数为：{n_clusters}  轮廓系数为：{silhouette_avg}")
+
+            if silhouette_avg > best_score:
+                best_score = silhouette_avg
+                best_n_clusters = n_clusters
+                best_labels = labels
+
+        return best_n_clusters, best_labels, best_score
+
+    def apply_pca(self, embeddings, n_samples):
+        n_components = min(self.pca_components, n_samples)
+        pca = PCA(n_components=n_components)
+        pca_embeddings = pca.fit_transform(embeddings)
+        return pca_embeddings
+
+    def apply_tsne(self, embeddings, n_samples):
+        perplexity = min(30, n_samples - 1)
+        tsne = TSNE(n_components=self.tsne_components, perplexity=perplexity)
+        tsne_embeddings = tsne.fit_transform(embeddings)
+        return tsne_embeddings
+
+    # 聚合
+    def aggregate(self, root_nodes):
+        embeddings = [node.embedding for node in root_nodes]
+        n_samples = len(root_nodes)
+
+        # 先进行 PCA 降维
+        pca_embeddings = self.apply_pca(embeddings, n_samples)
+        print(f"PCA 降维后的形状：{pca_embeddings.shape}")
+
+        # 再进行 t-SNE 降维
+        tsne_embeddings = self.apply_tsne(pca_embeddings, n_samples)
+        print(f"t-SNE 降维后的形状：{tsne_embeddings.shape}")
+
+        similarity_matrix = self.compute_similarity_matrix(tsne_embeddings)
+        print(f"相似度矩阵为：{similarity_matrix}")
+        print(f"原先森林数为: {len(root_nodes)}")
+
+        optimal_n_clusters, labels, silhouette_avg = self.find_optimal_clusters(
+            similarity_matrix=similarity_matrix,
+            max_clusters=max(int(math.sqrt(len(root_nodes)) * 1.5), 3)
+        )
+        print(f"最优聚类数: {optimal_n_clusters}")
+        print(f"轮廓系数: {silhouette_avg}")
+
+        avg_similarity = self.calculate_avg_similarity(root_nodes, labels)
+        cluster_separation = self.calculate_cluster_separation(similarity_matrix, labels)
+
+        buckets = {}
+        for idx, label in enumerate(labels):
+            if label not in buckets:
+                buckets[label] = []
+            buckets[label].append(root_nodes[idx])
+
+        node_components = list(buckets.values())
+        print(f"分块结果：{[[node.path for node in component] for component in node_components]}")
+
+        return silhouette_avg, avg_similarity, cluster_separation, labels
+
+
+class UDFMerge:
+    def __init__(self):
+        pass
+
+    def transform(self, data, args, kvargs):
+        print("enter transform Merge success")
+        path_list = json.loads(kvargs["str"].decode("utf-8"))
+
+        with EmbeddingCalculator() as ec:
+            embeddings = ec.calculate_leaf(path_list)
+
+        nodes = [Node(path=path, embedding=embedding) for path, embedding in zip(path_list, embeddings)]
+
+        aggregator = Aggregator()
+        silhouette_avg, avg_similarity, cluster_separation, labels = aggregator.aggregate(nodes)
+        print("finish aggregate")
+        print(f"silhouette_avg为: {silhouette_avg}\navg_similarity为: {avg_similarity}\ncluster_separation为: {cluster_separation}")
+
+        # 生成最终的结果
+        result = self.generate_result(nodes, labels)
+        print("finish generate result")
+
+        return result
+
+    def generate_result(self, root_nodes, labels):
+        result = [['(name)', '(label)'], ['BINARY', 'BINARY']]
+        for idx, node in enumerate(root_nodes):
+            result.append([node.path.encode('utf-8'), str(labels[idx]).encode('utf-8')])
+        return result

@@ -62,11 +62,12 @@ services:
     volumes:
       - ./model_cache:/root/.cache/huggingface/hub
       - ./cache:/app/cache
+      - ./logs/iginx:/app/logs
     environment:
       zookeeperConnectionString: zk:2181
       storageEngineList: 192.168.0.7#6667#iotdb12#username=root#password=root#has_data=false#is_read_only=false
-#      HF_DATASETS_OFFLINE: 1
-#      HF_HUB_OFFLINE: 1
+      HF_DATASETS_OFFLINE: 1
+      HF_HUB_OFFLINE: 1
     links:
       - zk
       - iotdb
