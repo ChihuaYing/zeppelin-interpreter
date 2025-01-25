@@ -4,5 +4,5 @@ taskList:
     timeout: 10000000
     sqlList:
       - "select store_embedding(*, host='milvus', port='19530') from (show columns);"
-schedule: "every 60 second"
+schedule: "every 3600 second"
 exportType: "none"

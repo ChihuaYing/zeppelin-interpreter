@@ -18,11 +18,13 @@ EOT
 
 WORKDIR /app
 
-ADD resources/iginx-client-0.8.0-SNAPSHOT.tar.gz .
-ADD resources/iginx-assembly-0.8.0-SNAPSHOT-server.tar.gz .
-
+ADD https://github.com/IGinX-THU/IGinX/releases/download/v0.8.0/IGinX-Client-0.8.0.tar.gz ./
+ADD https://github.com/IGinX-THU/IGinX/releases/download/v0.8.0/IGinX-Server-0.8.0.tar.gz ./
 
 RUN <<EOT bash
+tar -xzvf IGinX-Client-0.8.0.tar.gz
+tar -xzvf IGinX-Server-0.8.0.tar.gz
+rm *.tar.gz
 rm conf/log4j2.properties
 sed -i 's/enableEnvParameter=.*/enableEnvParameter=true/g' conf/config.properties
 sed -i 's/needInitBasicUDFFunctions=.*/needInitBasicUDFFunctions=true/g' conf/config.properties
@@ -30,9 +32,9 @@ sed -i 's/enableRestService=.*/enableRestService=false/g' conf/config.properties
 EOT
 
 COPY resources/tpch-header.sql temp/
+COPY schemapile-loader/target/schemapile-loader-0.7.2-shaded.jar temp/schemapile-loader.jar
 COPY resources/udf_list udf_funcs/
 COPY resources/Merge.py udf_funcs/python_scripts/
-COPY resources/StoreEmbedding.py udf_funcs/python_scripts/
 COPY resources/EmbeddingUtils.py udf_funcs/python_scripts/
 COPY resources/BigModelUtils.py udf_funcs/python_scripts/
 COPY resources/ScheduledEmbedding.yml temp/

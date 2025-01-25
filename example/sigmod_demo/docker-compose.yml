@@ -35,6 +35,7 @@ services:
       MINIO_ADDRESS: minio:9000
     ports:
       - "19530:19530"
+      - "9091:9091"
     links:
       - etcd
       - minio
@@ -60,10 +61,12 @@ services:
       - 6888:6888
     volumes:
       - ./model_cache:/root/.cache/huggingface/hub
+      - ./cache:/app/cache
     environment:
       zookeeperConnectionString: zk:2181
       storageEngineList: 192.168.0.7#6667#iotdb12#username=root#password=root#has_data=false#is_read_only=false
-
+#      HF_DATASETS_OFFLINE: 1
+#      HF_HUB_OFFLINE: 1
     links:
       - zk
       - iotdb
