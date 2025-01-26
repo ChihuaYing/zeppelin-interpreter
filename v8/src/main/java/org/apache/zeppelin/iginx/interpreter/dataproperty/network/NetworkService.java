@@ -49,7 +49,7 @@ public class NetworkService {
 
   public String initNetwork(VelocityContext velocityContext) {
     LOGGER.info("initNetwork: {} {} {}", needMerge, needRelation, paragraphId);
-    root = new NetworkTreeNode("rootId", "数据资产", 0);
+    root = new NetworkTreeNode("rootId", "Data Asset", 0);
     buildForest(root, columnPath);
     if (needMerge) {
       LOGGER.info("before merge, the size is：{}", root.getChildren().size());

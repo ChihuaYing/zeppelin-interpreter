@@ -21,7 +21,7 @@
 </style>
 
 <details>
-    <summary class="data-property-summary">Data Property</summary>
+    <summary class="data-property-summary">Data Asset</summary>
     <label for="${paragraphId}_match_box">Match Word</label>
     <input type="text" id="${paragraphId}_match_box" placeholder="Match..."/>
     <button id="${paragraphId}_match_button" type="button" class="btn btn-default btn-xs">Match</button>

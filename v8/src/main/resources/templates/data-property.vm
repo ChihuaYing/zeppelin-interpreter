@@ -117,7 +117,7 @@
             const rootNode = topNodes[0];
             data.nodes.add({
                 id: rootNode.id,
-                label: rootNode.name || "数据资产",
+                label: rootNode.name || "Data Asset",
                 font: {size: 20},
                 color: getColorByDepth(rootNode.depth),
                 shape: 'ellipse'
