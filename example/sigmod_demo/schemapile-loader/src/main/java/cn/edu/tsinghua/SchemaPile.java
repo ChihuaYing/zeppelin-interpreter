@@ -216,6 +216,6 @@ public class SchemaPile {
             ? Arrays.copyOfRange(parts, 1, blobIndex)
             : Arrays.copyOfRange(parts, 1, parts.length);
 
-    return String.join(".", pathParts);
+    return String.join("_", pathParts);
   }
 }

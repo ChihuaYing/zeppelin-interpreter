@@ -1,15 +1,15 @@
 package cn.edu.tsinghua;
 
 import cn.edu.tsinghua.iginx.exception.SessionException;
-import cn.edu.tsinghua.iginx.pool.SessionPool;
 import cn.edu.tsinghua.iginx.session.Session;
 import cn.edu.tsinghua.iginx.thrift.DataType;
 import com.google.common.collect.Lists;
 
 import java.io.*;
-import java.nio.file.Files;
 import java.util.*;
-import java.util.stream.Collectors;
+import java.util.concurrent.BlockingDeque;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.function.Supplier;
 import java.util.stream.IntStream;
 import java.util.zip.GZIPInputStream;
 
@@ -23,28 +23,59 @@ public class SchemaPileDataset {
   public static final int IGINX_PORT = 6888;
   public static final int BATCH_SIZE = 1000;
 
-  protected final List<IginxColumn> data;
+  protected static final List<Session> allSessions = new ArrayList<>();
+  protected static final BlockingDeque<Session> sessionPool = new LinkedBlockingDeque<>();
 
-  interface SessionFactory {
-    Session createSession() throws SessionException;
+  private static class SessionHandler implements AutoCloseable {
+    Session session;
+
+    public SessionHandler() {
+      try {
+        session = sessionPool.take();
+      } catch (InterruptedException e) {
+        throw new RuntimeException(e);
+      }
+    }
+
+    @Override
+    public void close() {
+      sessionPool.offer(session);
+    }
   }
+
+  public static void main(String[] args) throws Exception {
+    try {
+      for(int i=0;i<16;i++){
+        Session session = new Session(IGINX_HOST, IGINX_PORT);
+        allSessions.add(session);
+        sessionPool.offer(session);
+        session.openSession();
+      }
+      System.out.println("Preparing to insert data...");
+      SchemaPileDataset dataset = new SchemaPileDataset();
+      dataset.insertInto(SessionHandler::new);
+    }finally {
+      Exception exception = null;
+      for (Session session : allSessions) {
+        try {
+          session.closeSession();
+        }catch (SessionException e){
+          if(exception==null){
+            exception=e;
+          }else{
+            exception.addSuppressed(e);
+          }
+        }
+      }
+    }
+  }
+
+  protected final List<IginxColumn> data;
 
   public SchemaPileDataset() throws IOException {
     String json = readGzipFileFromResources(FILENAME);
     SchemaPile schemaPile = new SchemaPile(json);
     this.data = schemaPile.toIginxColumn();
-  }
-
-  public static void main(String[] args) throws Exception {
-    SessionFactory sessionFactory = () -> {
-      Session session = new Session(IGINX_HOST, IGINX_PORT);
-      session.openSession();
-      return session;
-    };
-
-    System.out.println("Preparing to insert data...");
-    SchemaPileDataset dataset = new SchemaPileDataset();
-    dataset.insertInto(sessionFactory);
   }
 
   private static String readGzipFileFromResources(String filename) throws IOException {
@@ -62,7 +93,7 @@ public class SchemaPileDataset {
     }
   }
 
-  private void insertInto(SessionFactory sessionFactory) {
+  private void insertInto(Supplier<SessionHandler> sessionFactory) {
     List<List<IginxColumn>> partitions = Lists.partition(data, BATCH_SIZE);
     try (ProgressBar progressBar =
              new ProgressBarBuilder()
@@ -83,7 +114,7 @@ public class SchemaPileDataset {
     }
   }
 
-  private static void insertDataInto(SessionFactory sessionFactory, List<IginxColumn> data)
+  private static void insertDataInto(Supplier<SessionHandler> sessionFactory, List<IginxColumn> data)
       throws SessionException {
 
     int maxLen = data.stream().mapToInt(column -> column.getValues().length).max().orElse(0);
@@ -98,11 +129,8 @@ public class SchemaPileDataset {
       values.add(Arrays.copyOf(column.getValues(), maxLen));
     }
 
-    Session session = sessionFactory.createSession();
-    try {
-      session.insertColumnRecords(paths, keys, values.toArray(), types);
-    } finally {
-      session.closeSession();
+    try(SessionHandler sessionHandler=sessionFactory.get()) {
+      sessionHandler.session.insertColumnRecords(paths, keys, values.toArray(), types);
     }
   }
 }

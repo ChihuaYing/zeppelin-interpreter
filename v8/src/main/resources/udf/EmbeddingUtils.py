@@ -1,8 +1,7 @@
 import asyncio
 import json
-import math
 from collections import defaultdict
-from typing import NamedTuple, Union, List
+from typing import NamedTuple
 
 import aiohttp
 import shelve
@@ -261,18 +260,12 @@ class UDFStoreEmbedding:
 
     def _build_descriptions(self, paths: list[str]) -> dict[str, str]:
         print("building descriptions for", len(paths), "paths")
-        nodes_list = self._build_nodes_list(paths)
+        nodes_list = [path.split(".") for path in paths]
         tree = self._build_path_tree(nodes_list)
 
         descriptions = {}
         self._dfs_build_descriptions(tree, [], descriptions)
         return descriptions
-
-    def _build_nodes_list(self, paths: list[str]) -> list[list[str]]:
-        print("building nodes list for", len(paths), "paths")
-
-        nodes_list = [path.split(".") for path in paths]
-        return nodes_list
 
     def _build_path_tree(self, nodes_list: list[list[str]]) -> dict:
         print("building path tree for", len(nodes_list), "paths")
