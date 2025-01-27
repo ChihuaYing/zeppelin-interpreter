@@ -8,9 +8,8 @@ public class NetworkTreeNode {
   private Map<String, NetworkTreeNode> children = new HashMap<>();
   private int depth;
   private String mergedRoot;
-  private float[] embedding;
-  private Boolean isExpanded;
-  private Boolean isShown;
+  private boolean isExpanded;
+  private boolean isShown;
 
   public NetworkTreeNode(String id, String name, int depth) {
     this.id = id;
@@ -45,44 +44,21 @@ public class NetworkTreeNode {
     return name;
   }
 
-  public void setName(String name) {
-    this.name = name;
-  }
-
   public Map<String, NetworkTreeNode> getChildren() {
     return children;
   }
 
-  public void setChildren(Map<String, NetworkTreeNode> children) {
-    this.children = children;
-  }
-
   public int getDepth() {
-    if (mergedRoot == null) {
-      return depth;
-    } else {
-      return depth + 1;
-    }
+    return depth;
   }
 
   public void setDepth(int depth) {
     this.depth = depth;
   }
 
-  public String getMergedRoot() {
-    return mergedRoot;
-  }
-
   public void setMergedRoot(String mergedRoot) {
     this.mergedRoot = mergedRoot;
-  }
-
-  public float[] getEmbedding() {
-    return embedding;
-  }
-
-  public void setEmbedding(float[] embedding) {
-    this.embedding = embedding;
+    this.setDepth(depth + mergedRoot.split("\\.").length);
   }
 
   public Boolean getExpanded() {

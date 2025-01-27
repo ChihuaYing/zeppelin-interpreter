@@ -5,6 +5,7 @@ RUN pip install --no-cache-dir numpy
 RUN pip install --no-cache-dir scikit-learn
 RUN pip install --no-cache-dir sentence-transformers
 RUN pip install --no-cache-dir pymilvus
+RUN pip install --no-cache-dir aiohttp
 
 RUN <<EOT bash
 apt install -y wget apt-transport-https gpg
@@ -30,11 +31,7 @@ sed -i 's/needInitBasicUDFFunctions=.*/needInitBasicUDFFunctions=true/g' conf/co
 sed -i 's/enableRestService=.*/enableRestService=false/g' conf/config.properties
 EOT
 
-COPY resources/tpch-header.sql temp/
 COPY schemapile-loader/target/schemapile-loader-0.7.2-shaded.jar temp/schemapile-loader.jar
-COPY resources/udf_list udf_funcs/
-COPY resources/EmbeddingUtils.py udf_funcs/python_scripts/
-COPY resources/BigModelUtils.py udf_funcs/python_scripts/
 COPY resources/ScheduledEmbedding.yml temp/
 
 COPY --chmod=755 resources/iginx.sh  iginx.sh

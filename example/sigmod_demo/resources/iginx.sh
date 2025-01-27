@@ -12,9 +12,6 @@ if [ ! -d "transform_jobs" ]; then
           sleep 1
       done
 
-      notify "Creating TPC-H columns"
-      sbin/start_cli.sh -e "`(cat temp/tpch-header.sql)`"
-
       notify "Loading Schema Pile"
       java -jar temp/schemapile-loader.jar
 

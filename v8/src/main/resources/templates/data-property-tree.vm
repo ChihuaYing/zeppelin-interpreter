@@ -86,37 +86,37 @@
             }
             console.debug('ancientIds:', ancientIds);
 
-            const updatedNodes = [];
-            for (const node of graph.getNodeData()) {
-                if (matchedNodeIds.has(node.id)) {
-                    updatedNodes.push({
-                        id: node.id,
-                        style: {
-                            stroke: '#0f0',
-                            lineWidth: 2,
-                        },
-                    });
-                } else if (ancientIds.has(node.id)) {
-                    updatedNodes.push({
-                        id: node.id,
-                        style: {
-                            stroke: '#f0f',
-                            lineWidth: 2,
-                        },
-                    });
-                } else {
-                    updatedNodes.push({
-                        id: node.id,
-                        style: {
-                            stroke: '#000',
-                            lineWidth: 1,
-                        },
-                    });
-                }
-            }
-            console.debug('updatedNodes:', updatedNodes);
-
-            graph.updateNodeData(updatedNodes);
+            // const updatedNodes = [];
+            // for (const node of graph.getNodeData()) {
+            //     if (matchedNodeIds.has(node.id)) {
+            //         updatedNodes.push({
+            //             id: node.id,
+            //             style: {
+            //                 stroke: '#0f0',
+            //                 lineWidth: 2,
+            //             },
+            //         });
+            //     } else if (ancientIds.has(node.id)) {
+            //         updatedNodes.push({
+            //             id: node.id,
+            //             style: {
+            //                 stroke: '#f0f',
+            //                 lineWidth: 2,
+            //             },
+            //         });
+            //     } else {
+            //         updatedNodes.push({
+            //             id: node.id,
+            //             style: {
+            //                 stroke: '#000',
+            //                 lineWidth: 1,
+            //             },
+            //         });
+            //     }
+            // }
+            // console.debug('updatedNodes:', updatedNodes);
+            //
+            // graph.updateNodeData(updatedNodes);
             graph.render();
         }
 

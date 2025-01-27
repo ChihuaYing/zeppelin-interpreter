@@ -7,20 +7,17 @@ import com.alibaba.fastjson2.filter.PropertyFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.google.common.collect.Multimap;
-import java.io.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.velocity.VelocityContext;
 import org.apache.zeppelin.iginx.interpreter.dataproperty.IginxDao;
+import org.apache.zeppelin.iginx.interpreter.dataproperty.entry.Relation;
 import org.apache.zeppelin.iginx.util.VelocityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class NetworkService {
   private static final Logger LOGGER = LoggerFactory.getLogger(NetworkService.class);
-  private static final Double RELATION_THRESHOLD = 0.8; // 关系阈值
   private static final Integer RELATION_DEPTH_LEVEL = 3; // 关系深度层级
   private static final Integer MERGE_MIN_SIZE = 5; // 需要聚类的最小值
 
@@ -176,34 +173,32 @@ public class NetworkService {
       labelToNodesMap.put(group.getKey(), nodesToMerge);
     }
 
-    // 对每个label进行合并
-    labelToNodesMap
-        .entrySet()
-        .parallelStream()
-        .forEach(
-            entry -> {
-              List<NetworkTreeNode> nodesToMerge = entry.getValue();
-              if (nodesToMerge.size() > 1) {
-                String mergedName =
-                    iginx.askConcept(
-                        nodesToMerge.stream()
-                            .map(NetworkTreeNode::getName)
-                            .collect(Collectors.toList()));
-                NetworkTreeNode mergedNode =
-                    new NetworkTreeNode("rootId." + mergedName, mergedName, 1);
-                nodesToMerge.forEach(
-                    node -> {
-                      mergedNode.getChildren().put(node.getName(), node);
-                      updateNodes(node, mergedNode.getName());
-                      synchronized (root) {
-                        root.getChildren().remove(node.getName());
-                      }
-                    });
-                synchronized (root) {
-                  root.getChildren().put(mergedNode.getName(), mergedNode);
-                }
-              }
-            });
+    root.getChildren().clear();
+    for (Map.Entry<String, List<NetworkTreeNode>> clusterAndChildren : labelToNodesMap.entrySet()) {
+      String cluster = clusterAndChildren.getKey();
+      List<NetworkTreeNode> children = clusterAndChildren.getValue();
+      String[] clusterParts = cluster.split("\\.");
+
+      StringBuilder idBuilder = new StringBuilder("rootId.");
+      NetworkTreeNode parent = root;
+      for (int i = 0; i < clusterParts.length; i++) {
+        int finalI = i;
+        String clusterName = clusterParts[i];
+        idBuilder.append(clusterName);
+        parent =
+            parent
+                .getChildren()
+                .computeIfAbsent(
+                    clusterName,
+                    name -> new NetworkTreeNode(idBuilder.toString(), clusterName, finalI + 1));
+        idBuilder.append(".");
+      }
+
+      for (NetworkTreeNode child : children) {
+        parent.getChildren().put(child.getName(), child);
+        updateNodes(child, cluster);
+      }
+    }
   }
 
   private void updateNodes(NetworkTreeNode node, String mergeRoot) {
@@ -211,23 +206,6 @@ public class NetworkService {
     for (NetworkTreeNode childNode : node.getChildren().values()) {
       updateNodes(childNode, mergeRoot);
     }
-  }
-
-  private String loadHtmlTemplate() {
-    String htmlTemplate = "static/vis/network.html";
-    try (InputStream inputStream =
-        this.getClass().getClassLoader().getResourceAsStream(htmlTemplate)) {
-      BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
-      StringBuilder content = new StringBuilder();
-      String line;
-      while ((line = reader.readLine()) != null) {
-        content.append(line).append("\n");
-      }
-      return content.toString();
-    } catch (IOException e) {
-      LOGGER.warn("load show columns to network error", e);
-    }
-    return htmlTemplate;
   }
 
   private NetworkTreeNode getNodeById(String nodeId) {
@@ -295,29 +273,17 @@ public class NetworkService {
     return links;
   }
 
-  private void collectShownNodes(NetworkTreeNode node, JSONArray nodes) {
-    if (node.getShown()) {
-      JSONObject nodeData = new JSONObject();
-      nodeData.put("id", node.getNetworkId());
-      nodes.add(nodeData);
-      node.setShown(false);
-      for (NetworkTreeNode child : node.getChildren().values()) {
-        collectShownNodes(child, nodes); // 递归处理
-      }
-    }
-  }
-
-  private void addEmbedding(NetworkTreeNode node) {
-    LOGGER.info("begin addEmbedding for {}'s children", node.getId());
-    List<String> paths = new ArrayList<>();
-    for (NetworkTreeNode childNode : node.getChildren().values()) {
-      paths.add(childNode.getEmbeddingId());
-    }
-    Map<String, float[]> embeddings = iginx.queryEmbeddingOfPaths(paths);
-    for (NetworkTreeNode childNode : node.getChildren().values()) {
-      childNode.setEmbedding(embeddings.get(childNode.getEmbeddingId()));
-    }
-  }
+  //  private void collectShownNodes(NetworkTreeNode node, JSONArray nodes) {
+  //    if (node.getShown()) {
+  //      JSONObject nodeData = new JSONObject();
+  //      nodeData.put("id", node.getNetworkId());
+  //      nodes.add(nodeData);
+  //      node.setShown(false);
+  //      for (NetworkTreeNode child : node.getChildren().values()) {
+  //        collectShownNodes(child, nodes); // 递归处理
+  //      }
+  //    }
+  //  }
 
   private List<Relation> calculateNodeRelation(NetworkTreeNode node) {
     LOGGER.info("calculateNodeRelation: nodeId is {}", node.getId());
@@ -339,40 +305,21 @@ public class NetworkService {
       targetEmbeddingId2NetworkId.put(visibleNode.getEmbeddingId(), visibleNode.getNetworkId());
     }
 
-    List<Relation> addRelations = new ArrayList<>();
-    Map<Pair<String, String>, Double> relationMaps =
-        iginx.analyseMainRelation(sourcePaths, targetPaths);
-    for (Map.Entry<Pair<String, String>, Double> entry : relationMaps.entrySet()) {
-      String sourceEmbeddingId = entry.getKey().getLeft();
-      String targetEmbeddingId = entry.getKey().getRight();
-      double score = entry.getValue();
+    List<Relation> addRelations = iginx.analyseMainRelation(sourcePaths, targetPaths);
+    List<Relation> relationsWithNetworkId = new ArrayList<>();
+
+    for (Relation relation : addRelations) {
+      String sourceEmbeddingId = relation.getFrom();
+      String targetEmbeddingId = relation.getTo();
+      double score = relation.getScore();
 
       String from = sourceEmbeddingId2NetworkId.get(sourceEmbeddingId);
       String to = targetEmbeddingId2NetworkId.get(targetEmbeddingId);
 
-      if (from == null || to == null) {
-        throw new IllegalStateException(
-            "Node not found for embeddingId: " + sourceEmbeddingId + " or " + targetEmbeddingId);
-      }
-
-      Relation relation = new Relation(from, to, score);
-      addRelations.add(relation);
+      relationsWithNetworkId.add(new Relation(from, to, score, relation.getRelation()));
     }
 
-    LOGGER.info("analyseNodeRelation");
-    addRelations
-        .parallelStream()
-        .forEach(
-            relation -> {
-              String[] parts1 = relation.getFrom().split("\\.");
-              String[] parts2 = relation.getTo().split("\\.");
-              String name1 = parts1[parts1.length - 1];
-              String name2 = parts2[parts2.length - 1];
-              String relationMsg = iginx.askRelation(name1, name2);
-              relation.setRelation(relationMsg);
-            });
-
-    return addRelations;
+    return relationsWithNetworkId;
   }
 
   private List<NetworkTreeNode> getVisibleNodes() {

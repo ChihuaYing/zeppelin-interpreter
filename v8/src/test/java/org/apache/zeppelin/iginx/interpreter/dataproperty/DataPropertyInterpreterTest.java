@@ -5,6 +5,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
+import org.apache.velocity.VelocityContext;
+import org.apache.zeppelin.iginx.util.VelocityUtil;
 import org.apache.zeppelin.interpreter.InterpreterContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,6 +31,21 @@ class DataPropertyInterpreterTest {
     Path path = Files.createTempFile("data_property", ".html");
     Files.write(path, html.getBytes());
     System.out.println("Data property html file path: " + path.toUri());
+  }
+
+  @Test
+  void testRenderDataPropertyGraph() throws IOException {
+
+    VelocityContext velocityContext = new VelocityContext();
+    velocityContext.put("paragraphId", "testParagraphId");
+    velocityContext.put("nodeList", getNodeListString());
+    velocityContext.put("relationList", getRelationListString());
+    String html = VelocityUtil.generate("templates/data-property.vm", velocityContext);
+
+    // 将结果写入临时文件并将路径打印出来
+    Path path = Files.createTempFile("data_property_graph", ".html");
+    Files.write(path, html.getBytes());
+    System.out.println("Data property graph html file path: " + path.toUri());
   }
 
   private List<String[]> getTpchPaths() {
@@ -111,5 +128,13 @@ class DataPropertyInterpreterTest {
         null,
         null,
         null);
+  }
+
+  private String getNodeListString() {
+    return "    [{\"depth\":0,\"id\":\"rootId\",\"name\":\"Data Asset\"},{\"depth\":1,\"id\":\"rootId.Abhinay_Reddy\",\"name\":\"Abhinay_Reddy\"},{\"depth\":1,\"id\":\"rootId.Aamir_97\",\"name\":\"Aamir_97\"},{\"depth\":1,\"id\":\"rootId.ATetiukhin\",\"name\":\"ATetiukhin\"},{\"depth\":1,\"id\":\"rootId.4156Team\",\"name\":\"4156Team\"},{\"depth\":1,\"id\":\"rootId.1804_Apr_USFdotnet\",\"name\":\"1804_Apr_USFdotnet\"},{\"depth\":1,\"id\":\"rootId.Aashishraizada\",\"name\":\"Aashishraizada\"},{\"depth\":1,\"id\":\"rootId.ASCIT\",\"name\":\"ASCIT\"},{\"depth\":1,\"id\":\"rootId.AdamNoone\",\"name\":\"AdamNoone\"},{\"depth\":1,\"id\":\"rootId.1071607950\",\"name\":\"1071607950\"},{\"depth\":1,\"id\":\"rootId.2_men_team\",\"name\":\"2_men_team\"},{\"depth\":1,\"id\":\"rootId.148360\",\"name\":\"148360\"},{\"depth\":1,\"id\":\"rootId.9287vk5\",\"name\":\"9287vk5\"},{\"depth\":1,\"id\":\"rootId.837477\",\"name\":\"837477\"},{\"depth\":1,\"id\":\"rootId.ActiveBeanCoders\",\"name\":\"ActiveBeanCoders\"},{\"depth\":1,\"id\":\"rootId.AbhishekMali21\",\"name\":\"AbhishekMali21\"},{\"depth\":1,\"id\":\"rootId.52North\",\"name\":\"52North\"},{\"depth\":1,\"id\":\"rootId.2002_feb24_net\",\"name\":\"2002_feb24_net\"},{\"depth\":1,\"id\":\"rootId.7cnny\",\"name\":\"7cnny\"},{\"depth\":1,\"id\":\"rootId.2006_jun15_net\",\"name\":\"2006_jun15_net\"},{\"depth\":1,\"id\":\"rootId.1ibrary\",\"name\":\"1ibrary\"},{\"depth\":1,\"id\":\"rootId.ASXFA\",\"name\":\"ASXFA\"},{\"depth\":1,\"id\":\"rootId.0cmg\",\"name\":\"0cmg\"},{\"depth\":1,\"id\":\"rootId.Abel_Moremi\",\"name\":\"Abel_Moremi\"},{\"depth\":1,\"id\":\"rootId.AccaEmme\",\"name\":\"AccaEmme\"}]";
+  }
+
+  private String getRelationListString() {
+    return "[{\"from\":\"rootId.Abhinay_Reddy\",\"to\":\"rootId.Aamir_97\",\"relation\":\"created\"},{\"from\":\"rootId.Abhinay_Reddy\",\"to\":\"rootId.ATetiukhin\",\"relation\":\"created\"},{\"from\":\"rootId.Abhinay_Reddy\",\"to\":\"rootId.4156Team\",\"relation\":\"created\"},{\"from\":\"rootId.Abhinay_Reddy\",\"to\":\"rootId.1804_Apr_USFdotnet\",\"relation\":\"created\"},{\"from\":\"rootId.Abhinay_Reddy\",\"to\":\"rootId.Aashishraizada\",\"relation\":\"created\"},{\"from\":\"rootId.Abhinay_Reddy\",\"to\":\"rootId.ASCIT\",\"relation\":\"created\"},{\"from\":\"rootId.Abhinay_Reddy\",\"to\":\"rootId.AdamNoone\",\"relation\":\"created\"},{\"from\":\"rootId.Abhinay_Reddy\",\"to\":\"rootId.1071607950\",\"relation\":\"created\"}]";
   }
 }

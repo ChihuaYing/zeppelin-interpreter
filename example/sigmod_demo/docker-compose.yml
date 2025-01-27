@@ -63,6 +63,8 @@ services:
       - ./model_cache:/root/.cache/huggingface/hub
       - ./cache:/app/cache
       - ./logs/iginx:/app/logs
+      - ../../v8/src/main/resources/udf/udf_list:/app/udf_funcs/udf_list
+      - ../../v8/src/main/resources/udf/EmbeddingUtils.py:/app/udf_funcs/python_scripts/EmbeddingUtils.py
     environment:
       zookeeperConnectionString: zk:2181
       storageEngineList: 192.168.0.7#6667#iotdb12#username=root#password=root#has_data=false#is_read_only=false
