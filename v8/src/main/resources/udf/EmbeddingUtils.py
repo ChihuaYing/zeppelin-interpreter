@@ -1,5 +1,8 @@
 import asyncio
+import gzip
 import json
+import os
+import pickle
 from collections import defaultdict
 from typing import NamedTuple
 
@@ -14,8 +17,8 @@ from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.metrics import silhouette_score
 from sklearn.cluster import KMeans
-from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
+import matplotlib.pyplot as plt
 
 
 class LLMDao:
@@ -231,7 +234,7 @@ class MilvusDao:
         print("fetching by path")
         paths = json.loads(paths_json)
         batch = 50
-        for i in range(0, len(paths), batch):
+        for i in tqdm.tqdm(range(0, len(paths), batch), desc=f"Fetching embeddings by path batch {batch}"):
             paths_batch = paths[i:i + batch]
             entities = self.collection.query(
                 expr="path in " + json.dumps(paths_batch),
@@ -239,6 +242,20 @@ class MilvusDao:
             )
             for entity in entities:
                 yield entity["path"], entity["embedding"], entity["description"]
+
+    def fetch_all_embeddings(self):
+        print("fetching all embeddings")
+        iter = self.collection.query_iterator(
+            output_fields=["path", "embedding"]
+        )
+        while True:
+            entities = iter.next()
+            if not entities:
+                iter.close()
+                break
+
+            for entity in entities:
+                yield entity["path"], entity["embedding"]
 
     def bulk_search_similarity(self, embedding_list, path_list_json):
         print("Searching similar embeddings")
@@ -451,20 +468,6 @@ class Aggregator:
         self.pca_components = pca_components
         self.tsne_components = tsne_components
 
-    def _apply_pca(self, embeddings):
-        n_components = min(self.pca_components, len(embeddings))
-        pca = PCA(n_components=n_components)
-        pca_embeddings = pca.fit_transform(embeddings)
-        print(f"PCA 降维后的形状：{pca_embeddings.shape}")
-        return pca_embeddings
-
-    def _apply_tsne(self, embeddings):
-        perplexity = min(30, len(embeddings) - 1)
-        tsne = TSNE(n_components=self.tsne_components, perplexity=perplexity)
-        tsne_embeddings = tsne.fit_transform(embeddings)
-        print(f"t-SNE 降维后的形状：{tsne_embeddings.shape}")
-        return tsne_embeddings
-
     def _compute_similarity_matrix(self, embeddings):
         similarity_matrix = cosine_similarity(embeddings)
         print("similarity_matrix:",similarity_matrix)
@@ -502,9 +505,7 @@ class Aggregator:
 
         embeddings = [node.embedding for node in nodes]
 
-        pca_embeddings = self._apply_pca(embeddings)
-        tsne_embeddings = self._apply_tsne(pca_embeddings)
-        similarity_matrix = self._compute_similarity_matrix(tsne_embeddings)
+        similarity_matrix = self._compute_similarity_matrix(embeddings)
         labels = self._find_optimal_clusters(similarity_matrix,min_clusters,max_clusters)
         cluster_count = len(set(labels))
         print(f"最优聚类数: {cluster_count}")
@@ -571,12 +572,69 @@ class UDFMerge:
         return  results
 
 
+# if __name__ == '__main__':
+#     # 本地测试
+#     udf = UDFMerge()
+#     kvargs = {
+#         'port': b'19530',
+#         'paths': b'["IvayloIV","Arifyudi26","Jaaga","DevStreet","1804_Apr_USFdotnet","JhonatanGAlves","Alexandre_Caetano_eng","2002_feb24_net","Ellie190","Dalttony","DonnieDing","937447974","AngelesPiotroski","Alfdhiw","Chelsea9803","Alexhendar","654894017","FelipeAN0810","Bingjian_Zhu","GuilhermeOrtizAluno","A_Mckinlay","DannyK1703","Andrew2112","Gamebot2","Ekkyar","DataWorkbench","ICT_BDA","J4Numbers","Girish0212","Aivyss","HarshaVardhan23","EvgeniiZaets","Arthurvdmerwe","Javiithop","AbdelrahmanElghalla","George_Kagwe","DaniloAlmeidaSantos","97lynk","CompassPointMedia","Areso","BigBoi077","Ignis34Rus","3203317","Bhavanshuvig","ESTS_RS","Diegocortes15","GambuzX","HenishPatadiya","Al_Ibne_Siam","Em11FW","0815_edv","ChathurRandul","Byegon2441","Esneider1997","HariShankar08","DirkReinemann","JohnMMMM","JimmyMayta","GitHubRepoDescription","Hasindu1","JacobCreed2","HazarZYGC","AlpetGexh","CS445F21_PACU","BizbrainzGit","Anupam_Panwar","Arc2014","Arvato_Systems","DaviMartinss","BrowserGameScriptz","FatemaBader","Jotinha65","FauzanKatil","Cat_nyan","Abbottmo","AaEzha","GranadaORM","DaffaDwiyanti","JonaCaste","IulianCernat","Bcdo","InsightsDev_dev","Direct_Entry_Program_7_Playground","BallardDavid","CS_UCY_EPL343","Imran_cse","GridGain_Demos","Andytule","DarkCobra7423","DanIulian","BoiseState","Jose_augusto_git","Elzawawy","CoderDream","Kaciras","Chrismond_Versailles","AvnanRahman","Aldirezkir","Cold23","Daniel_Ramos_Garcia","Dania01","Bucknell_ECE","8razel8","FcoJavierGlez","Afifhendrawan_77","AhmedinM","Alfarizqi88","Fernandogza","AlbertMukhammadiev","GustavoOliverRocha","AntonKJ","Cantara","JeremyPercy","Communote","148360","IvanLychkovakha","DayanaChris","Cameron_Weber","BrendaSalgadoCaldera","Feeco5","52North","DefJia","GeorgiGradev","Code4SocialGood","FedulovEgor","AnaghaV19","Jonathan_Roddy","AlissonJF","Andi_IM","CTU_ITClub","IEA_Task_43","AdamArthurF","Cyrrav","Adjagbale_Yao","Brsrker","BBucketIsBetter","1909_sep30_net","Grandez","ImpulseCorona101","AthinaSpanou","Anggifitra141","BitterOcean","Graftiger","AdityaSrinivasa","Bakuard","IGedeMiarta","Jacint56","Eddie_Graham","Frallallero","JabRef","HuuDungNg","Akhyruyatul","DebashishSau","GutherJos","Foroozani","Ddollz","BrunoCampana","BryceDouglasJames","ArneKramerSunderbrink","Api2sem2021","DieuLinh99","Elisee153","AdamNoone","Dr0na","HenriqueBraz","Bastienp2a","JavaZWT","ColinM94","AlisuSantana","CodingBeard","837477","AlekseyBykov","BobyHart4488","2pc","Aureliano1963","GITSALAHE","AlphaWeb1","Cynler","H171600610","Gladsonms","DataScientists","Eynosoft","Coffe_chill","DWIKEIKROMI","ChamaniS","AgladeJesus","CesarAldair123","AXNTROYUANXD","CANSA_team","AndrichardWS","BuildForSDG","JamesKing9","Fadhilamadan","Atihinen","Akbhobhiya","FreddieValenzuela","Ardi_bog","Harsh1925","Devyani1907","G3G4X5X6","FelCore","HackBrexit","DataViva","9606","Denzel18","Islandora_Devops","Jiumiking","Evilscaught","EhODavi","ATetiukhin","Aashishraizada","Greenborn","Dayana20","GabrielSA87","2_men_team","ArieleMartins","BenediktMagnus","CPSC319_2017w1","EquipstatTSEC","2012lucho","Adetiya21","HaidirBz","DavidBarbosa425","6299481145","Alessandro_Schmidt","Devansh3712","AndanTeknomedia","GustavoAT","KaisCommitted","EnvironmentalDashboard","JavierMtzO","Griffin_Brome","AldiAkbar","Dominick159","Debdyut","FeurialBlack","FernandoChai","DhrumilShah98","Fariq01","IngSW_unipv","Ermile","GrzegorzMika","AgileCrocodile","Aiyuuu033119","ChangYeop_Yang","Freakazo","CPuriandika","2binsurranceasmr","Binny29","Boyan_Apostolov","BioAnalyticResource","JoaoJanini","AngryJKirk","AzureKn1ght","GodBastardNeil","EleaFederio","DRIFSRI","Daniel_Tilley","BAMGames","Joseki","9287vk5","AzrulSudarmin","JoergRoemhild","CheungChingYin","CloudPOSFall","AlexandreLch","DoubtAvatar_DP2","DawarAlvi","Anggito28","Alvianrizky","Hetal2425","3m1n3nc3","GokselKUCUKSAHIN","AsciiShell","FreezyBee","3rdYearGroup11","Femeuc","Ashish_003","DuckWithNoSound","BliiTzZ","Akash_Trivedi","BinhMinhs10","DaviJam","B0urG3ois","ChrisAraneo","Didi3aone","IgorIvkin","Ikhlasul_FZ","CharlieGoldsmithAssociates","Frissons","Asmodasis","Aastha2001","AlfianChandra","JohnDoeAntler","JonRob812","476661640","BhagyaRana","Doctor_Hacker","Daviad0","IANSOFT_AC","B_Yan","Dri0m","JavGt","CUAHSI","Gamdara","JesusHdezWaterloo","AbhishekMali21","Barto12","Chris95Hua","FalianaRanai","Aran276","BarrelBrenner","GMCarlos","Carduin","FreddoCG","7cnny","2006_jun15_net","0cmg","Jochen1602","AccaEmme","Arifianto12RPLA","AyaanH123","DXane","Engin_Boot","Benjith","Dissem","CaioEduardoMouta","Jimut123","Isti_Am","Fireserdg","DrWolf_OSS","ErickSantiagoUyana","Furlanetti","Danieloliver11","Cadiac","HairAndBeardGuy","AlphawizzTechnology","IngDixonCano","JoaopedroSassi","Dinara2020","Jugendhackt","BacLuc","JamesMarino","JosenildoMauricio","AdmiralPuni","AirportOs","JhonzRamos","BeyondLogicInc","GregPetropoulos","Anonyymi","AylinArtut","Julio_Antony","Charlene76140","Java_Publications","HeroBarry","Brain2Github","Chief_Ut","ArtyshkoAndrey","GrayXu","747646769","EgaBudimanItera","JrzenonDev","HaSa1002","Dvillano","GydroCasper","CesarCasagrande33","IBARTI2019","Alexhaoge","Anusien","Becold","BlagoKolev","GlistenSTAR","Daryl110","BuffaloShop","ExplosiveBattery","BobSimon","BogdanMarghescu","Hide_Koba","Indah17","4nd12i","DavidGalileo24","HamidXoliqov","H_N41K","CERA_OHM","Gabriel_Blanes","1163710122","AdvenAdam","1lirisist","ImpalaToGo","A_Lorin","AnisaDyah","FlorentGallou_Dev","AlzheTV","CliffordMarley","JamaHCS","Cepave","AssadIKhan","ArturTomasi","BinoMate","CUBRID","AncientMariner","BeiyanLuansheng","2010USFJava","Abhinay_Reddy","AurelieBodart","Cafe_Variome","Apicurio","1ibrary","Abel_Moremi","Arctos6135","Apop85","AlexnaderMishin","Aurelius91","Jupriadi","ComPHPPuebla","Juzzephe","Gfrey70","Jonatas_Soares_Alves","GeNa_jj","DigitalDevelooper","HarshaAbeyvickrama","FaizullahFirozi","Felix_xilef","GustavoBorges_tec","Ivrgs","AkbarMuarif","F4NT0","Fredy_Gutierrez","JonahY","88aleksandra88","JPablo1997","Guavus","Angular2Guy","Alcc5","Alfa93Adv","Ir001","BasedDatabases","344546752","Aquerr","Amuxix","Andy_Merhaut","Jev1337","Clifford18","ASCIT","DeaVenditama","D13xxx","BelmiroMungoi","ElephanZ","HKK_Team","Antonio_Rdz","Chizzy_codes","DenisStolyarov","CMS_Project","FelipePDS","BugFixes","Jiyoung5242","IsabellaTorres100111","BorisKlinkerSAP","ConcaveIT","Cherylngo","BogushAleksandr","Aryan284","Gregseanyoung","JLMadsen","Alphinha","173716414","GayanSampathManamendra","Barraguesh","JordanForde1","JMAfrico","Ebl0010","AyberkCakar","Godeta","Illumiy","CorbenTerminator","AndreaBizz8","FieryInferno","Alachisoft","Egg4","FlashZoom","IgorFroehner","DanielVallin","CSTeam_Squirtle","HouariZegai","FerdinandSukhoi","Enrique213_VP","18502079446","Danangoffic","Alfraganus","HXSecurity","BanzaiTokyo","AirLiquide","GuidoTorres","AriniInf","AnsariMaviya","Danieljrsilva","ATOM27","HarryCordewener","CELEC_USTHB_CLUB","BorjaPelegrin","DaniyanP","AvindaAlamsyah","Dukou007","GabrielGardev","DarlanNoetzold","Fernal73","Darthveloper21","BuntsFidleyBits","Harprit_singh","Harvard_ATG","FalahRafif","EstefaniaExamples","Don_Jin","JonathanGWesterfield","Arnzero","AVE_cesar","AlfanFG","JuanCamiloRB","AnakCreative","GuoHaoZai","Groupe2_Musicoshop","Brayan7u7r","Hafizcode02","EJNB","DOH_CHD_CARAGA","JavaDogs","19Nikola96","Breeze1in1drizzle","250203726","FriendsOfREDAXO","Jeet21_dev","Gempitalarasati","Ithar","EdwinFLopez","Dracenco","IkeC","664709923","FlakyTestDetection","Bartleby2718","DrakeJohnny","HabibAroua","JoeLago","Aresha_RS","HappyLamia","Alch1mist","Aplear","Iteachprogramer","Bohemiaman","AyoubNafil","Guilherme_Sampaio","France_ioi","IgnasiBosch","Embarcadero","JamithNimantha","BenjaminAtbi","Emmett09","BlackCubes","JSRevolorio","E_Arsip","Bishobokeruwizeye","AtlasOfLivingAustralia","Blackpaper13","Alexlingl","Dinesh_Wasnik","HUSTERGS","Dasep12","AshfinRamadhandy","JacobBaynes","GuilhermePalma","CaliiTapia","HuangShubin99","Heroadn","AliHSZ99","HuyCongJr","JadynWong","GabrielEVT","ITMSFT","CodesAreHonest","AscEmu","JAMESKURIA","Algifarii","Ignasrocas1990","Jely101","J04N4","Cassolette","Agwis_Software","DavidHigueraFerrez","KValexander","DanielHenrique_Dev","2504Guimaraes","FerdianPio","Jcarnecer","Galuh80","Emesson_cmd","CristianSalazarAtalaya","DSM_DMS","Imam9","HosseinChibane","Ja3farMortada","Du_an_Giao_Duc","4156Team","GavrielDunev","1071607950","Evodia123456","Dandyamarta211","Fairizal","AndhikaK","JoaoG23","FarhanShoukat","FFahrenheit","Barry0310","ASXFA","AgnieszkaCh","IgorGuariroba","0_k_1","INF2021_PW_G20","IqbalSoft","AngelFlower","5730289021_NN","Black_Library","CodeFuller","GustavoQuinteroC","CareersSkillsIncubator","Activiti","Ankush34","AldonahZero","AliAbdurohman16","Bruuno07","AyuMuhafilah","DimovDimo","HeyCommunity","AndyZunaedy","1612SMShuvo","FarisLucky","BrunoTravassos","AlwinBrauns","AlexanderShniperson","AlanLWilliams","DrewBritt","Camillolevi","AroniainaSaotra","FutureB1t","ASRSoftware","AbsaOSS","Heggy19","BenatG_tech","Infact27","Aamir_97","Juniper","CactuseSecurity","Csineneo","ActiveBeanCoders","CVSink","Harlen520","ElGarageHub","GROUPBAOCAO4305","Gellish","FilanMaulaAndini","Aplycaebous","Braz99","JEMinick","Cauenumo","H_Gallardo","Eberm024","EvanGertis","Bigjoos","Dowsley","Freire71","Fayiawaluddinzaki","310369677","DrunkenLee","Bo_Xuan","AnathPKI","JohnLeather","EtienneCClarke","Ademboussetha","AdoboFighter","DaoDucVTCA","APIJSON","JC_Rave","ChecheSwap","GleysonAndrade","Baboo16cs11","362409960","IrfanFananiM","AnkhSalam","FleetFarming","Juanca92","Edsonrc","Jiachen_Zhang","Checkers300","GagaPoloJr","HigorRoc","AKASH_2019","JMonks14","AbhayLodhi","Danish12","121github","ChiaraDM","Ensembl","Jonasdart","CEPRE_UNI","DongJeremy","Amaulid","AmineMbaye","JWeonseok","BerliozLeChat","DCaceres2018","CurtisPreston99","CembZy","DannyRivasDev","Enter_36_chambers_of_wu_tang_fam","HalfMouse","Dragontalker","FerMdez","AlekseiSkr","AndreMoerza","Andrianto5501","528854302","ChenhuaFan","HVrettost","AhmedGamal98","JManToGithub","Ferriol_blip","8108905324","JakubVazan","Angelica2001143","CyberArkForTheCommunity","HuLing1025","Fandia9050","CareSet","DavidOlivera89","4kari","10go1027","AKS144","KKgautam61","Deluze","ElianMariano","Islan_Santos","AlexeyDota2Ru","ABenchM","AndreaBIGOT","Darkr4ptor","BiancaGiovanna","FoxBPM","ADEPT_Informatique","3plcoins","Excecutor1","Carter90","DataJunction","EndyPratama","CiccioTecchio","AlaaRdwan94","AryanArion","Escapist_007","AlexandreSato","CorentinMAG","Floating_Island","Azad94","JotunMichael","1988gadocansey","EricMalpass","IAAA_Lab","Finnerale","200106_UTA_PRS_NET","FationSH","Aiiishaaa","Gabo1122","09143613","AlekseevArtem","BrenoHenrrique","JosePerezHG","EdwinKassier","Fly_76","DenislavVelichkov","JONAS060708","Azzam279","AlejandroSantorum","HXLStandard","JoaquinMachXD2021","Dumbeldor","1809_UTA_Java","K4M1coder","Haikson","Dafana29","EghoPratama"]',
+#         'host': b'localhost'}
+#     result = udf.transform(None, None, kvargs)
+#     print(result)
+
+
+
+class TSNEVisualizer:
+
+    @staticmethod
+    def cache_get(path, supplier):
+        path = "cache/"+ path + ".pkl"
+        if not os.path.exists(path):
+            print(f"Cache not found, fetching data {path}")
+            data = supplier()
+            with open(path, "wb") as f:
+                pickle.dump(data, f)
+        with open(path, "rb") as f:
+            return pickle.load(f)
+
+    def __init__(self):
+        self.embeddings = {
+            path: embedding
+            for path, embedding in tqdm.tqdm(MilvusDao({}).fetch_all_embeddings(), desc="Fetching paths")
+        }
+
+    def fit_tsne(self,n_components, path_filter=lambda x: True):
+        filtered_embeddings = np.array([embedding for path, embedding in self.embeddings.items() if path_filter(path)])
+        tsne = TSNE(n_components=n_components)
+        tsne_embeddings = tsne.fit_transform(filtered_embeddings)
+        return tsne_embeddings.T
+
+    def visualize_2d(self, tsne_embeddings, title):
+        # 缩小点的半径
+        plt.scatter(tsne_embeddings[0], tsne_embeddings[1], s=0.1)
+        plt.title(title)
+        plt.show()
+
+
 if __name__ == '__main__':
-    # 本地测试
-    udf = UDFMerge()
-    kvargs = {
-        'port': b'19530',
-        'paths': b'["IvayloIV","Arifyudi26","Jaaga","DevStreet","1804_Apr_USFdotnet","JhonatanGAlves","Alexandre_Caetano_eng","2002_feb24_net","Ellie190","Dalttony","DonnieDing","937447974","AngelesPiotroski","Alfdhiw","Chelsea9803","Alexhendar","654894017","FelipeAN0810","Bingjian_Zhu","GuilhermeOrtizAluno","A_Mckinlay","DannyK1703","Andrew2112","Gamebot2","Ekkyar","DataWorkbench","ICT_BDA","J4Numbers","Girish0212","Aivyss","HarshaVardhan23","EvgeniiZaets","Arthurvdmerwe","Javiithop","AbdelrahmanElghalla","George_Kagwe","DaniloAlmeidaSantos","97lynk","CompassPointMedia","Areso","BigBoi077","Ignis34Rus","3203317","Bhavanshuvig","ESTS_RS","Diegocortes15","GambuzX","HenishPatadiya","Al_Ibne_Siam","Em11FW","0815_edv","ChathurRandul","Byegon2441","Esneider1997","HariShankar08","DirkReinemann","JohnMMMM","JimmyMayta","GitHubRepoDescription","Hasindu1","JacobCreed2","HazarZYGC","AlpetGexh","CS445F21_PACU","BizbrainzGit","Anupam_Panwar","Arc2014","Arvato_Systems","DaviMartinss","BrowserGameScriptz","FatemaBader","Jotinha65","FauzanKatil","Cat_nyan","Abbottmo","AaEzha","GranadaORM","DaffaDwiyanti","JonaCaste","IulianCernat","Bcdo","InsightsDev_dev","Direct_Entry_Program_7_Playground","BallardDavid","CS_UCY_EPL343","Imran_cse","GridGain_Demos","Andytule","DarkCobra7423","DanIulian","BoiseState","Jose_augusto_git","Elzawawy","CoderDream","Kaciras","Chrismond_Versailles","AvnanRahman","Aldirezkir","Cold23","Daniel_Ramos_Garcia","Dania01","Bucknell_ECE","8razel8","FcoJavierGlez","Afifhendrawan_77","AhmedinM","Alfarizqi88","Fernandogza","AlbertMukhammadiev","GustavoOliverRocha","AntonKJ","Cantara","JeremyPercy","Communote","148360","IvanLychkovakha","DayanaChris","Cameron_Weber","BrendaSalgadoCaldera","Feeco5","52North","DefJia","GeorgiGradev","Code4SocialGood","FedulovEgor","AnaghaV19","Jonathan_Roddy","AlissonJF","Andi_IM","CTU_ITClub","IEA_Task_43","AdamArthurF","Cyrrav","Adjagbale_Yao","Brsrker","BBucketIsBetter","1909_sep30_net","Grandez","ImpulseCorona101","AthinaSpanou","Anggifitra141","BitterOcean","Graftiger","AdityaSrinivasa","Bakuard","IGedeMiarta","Jacint56","Eddie_Graham","Frallallero","JabRef","HuuDungNg","Akhyruyatul","DebashishSau","GutherJos","Foroozani","Ddollz","BrunoCampana","BryceDouglasJames","ArneKramerSunderbrink","Api2sem2021","DieuLinh99","Elisee153","AdamNoone","Dr0na","HenriqueBraz","Bastienp2a","JavaZWT","ColinM94","AlisuSantana","CodingBeard","837477","AlekseyBykov","BobyHart4488","2pc","Aureliano1963","GITSALAHE","AlphaWeb1","Cynler","H171600610","Gladsonms","DataScientists","Eynosoft","Coffe_chill","DWIKEIKROMI","ChamaniS","AgladeJesus","CesarAldair123","AXNTROYUANXD","CANSA_team","AndrichardWS","BuildForSDG","JamesKing9","Fadhilamadan","Atihinen","Akbhobhiya","FreddieValenzuela","Ardi_bog","Harsh1925","Devyani1907","G3G4X5X6","FelCore","HackBrexit","DataViva","9606","Denzel18","Islandora_Devops","Jiumiking","Evilscaught","EhODavi","ATetiukhin","Aashishraizada","Greenborn","Dayana20","GabrielSA87","2_men_team","ArieleMartins","BenediktMagnus","CPSC319_2017w1","EquipstatTSEC","2012lucho","Adetiya21","HaidirBz","DavidBarbosa425","6299481145","Alessandro_Schmidt","Devansh3712","AndanTeknomedia","GustavoAT","KaisCommitted","EnvironmentalDashboard","JavierMtzO","Griffin_Brome","AldiAkbar","Dominick159","Debdyut","FeurialBlack","FernandoChai","DhrumilShah98","Fariq01","IngSW_unipv","Ermile","GrzegorzMika","AgileCrocodile","Aiyuuu033119","ChangYeop_Yang","Freakazo","CPuriandika","2binsurranceasmr","Binny29","Boyan_Apostolov","BioAnalyticResource","JoaoJanini","AngryJKirk","AzureKn1ght","GodBastardNeil","EleaFederio","DRIFSRI","Daniel_Tilley","BAMGames","Joseki","9287vk5","AzrulSudarmin","JoergRoemhild","CheungChingYin","CloudPOSFall","AlexandreLch","DoubtAvatar_DP2","DawarAlvi","Anggito28","Alvianrizky","Hetal2425","3m1n3nc3","GokselKUCUKSAHIN","AsciiShell","FreezyBee","3rdYearGroup11","Femeuc","Ashish_003","DuckWithNoSound","BliiTzZ","Akash_Trivedi","BinhMinhs10","DaviJam","B0urG3ois","ChrisAraneo","Didi3aone","IgorIvkin","Ikhlasul_FZ","CharlieGoldsmithAssociates","Frissons","Asmodasis","Aastha2001","AlfianChandra","JohnDoeAntler","JonRob812","476661640","BhagyaRana","Doctor_Hacker","Daviad0","IANSOFT_AC","B_Yan","Dri0m","JavGt","CUAHSI","Gamdara","JesusHdezWaterloo","AbhishekMali21","Barto12","Chris95Hua","FalianaRanai","Aran276","BarrelBrenner","GMCarlos","Carduin","FreddoCG","7cnny","2006_jun15_net","0cmg","Jochen1602","AccaEmme","Arifianto12RPLA","AyaanH123","DXane","Engin_Boot","Benjith","Dissem","CaioEduardoMouta","Jimut123","Isti_Am","Fireserdg","DrWolf_OSS","ErickSantiagoUyana","Furlanetti","Danieloliver11","Cadiac","HairAndBeardGuy","AlphawizzTechnology","IngDixonCano","JoaopedroSassi","Dinara2020","Jugendhackt","BacLuc","JamesMarino","JosenildoMauricio","AdmiralPuni","AirportOs","JhonzRamos","BeyondLogicInc","GregPetropoulos","Anonyymi","AylinArtut","Julio_Antony","Charlene76140","Java_Publications","HeroBarry","Brain2Github","Chief_Ut","ArtyshkoAndrey","GrayXu","747646769","EgaBudimanItera","JrzenonDev","HaSa1002","Dvillano","GydroCasper","CesarCasagrande33","IBARTI2019","Alexhaoge","Anusien","Becold","BlagoKolev","GlistenSTAR","Daryl110","BuffaloShop","ExplosiveBattery","BobSimon","BogdanMarghescu","Hide_Koba","Indah17","4nd12i","DavidGalileo24","HamidXoliqov","H_N41K","CERA_OHM","Gabriel_Blanes","1163710122","AdvenAdam","1lirisist","ImpalaToGo","A_Lorin","AnisaDyah","FlorentGallou_Dev","AlzheTV","CliffordMarley","JamaHCS","Cepave","AssadIKhan","ArturTomasi","BinoMate","CUBRID","AncientMariner","BeiyanLuansheng","2010USFJava","Abhinay_Reddy","AurelieBodart","Cafe_Variome","Apicurio","1ibrary","Abel_Moremi","Arctos6135","Apop85","AlexnaderMishin","Aurelius91","Jupriadi","ComPHPPuebla","Juzzephe","Gfrey70","Jonatas_Soares_Alves","GeNa_jj","DigitalDevelooper","HarshaAbeyvickrama","FaizullahFirozi","Felix_xilef","GustavoBorges_tec","Ivrgs","AkbarMuarif","F4NT0","Fredy_Gutierrez","JonahY","88aleksandra88","JPablo1997","Guavus","Angular2Guy","Alcc5","Alfa93Adv","Ir001","BasedDatabases","344546752","Aquerr","Amuxix","Andy_Merhaut","Jev1337","Clifford18","ASCIT","DeaVenditama","D13xxx","BelmiroMungoi","ElephanZ","HKK_Team","Antonio_Rdz","Chizzy_codes","DenisStolyarov","CMS_Project","FelipePDS","BugFixes","Jiyoung5242","IsabellaTorres100111","BorisKlinkerSAP","ConcaveIT","Cherylngo","BogushAleksandr","Aryan284","Gregseanyoung","JLMadsen","Alphinha","173716414","GayanSampathManamendra","Barraguesh","JordanForde1","JMAfrico","Ebl0010","AyberkCakar","Godeta","Illumiy","CorbenTerminator","AndreaBizz8","FieryInferno","Alachisoft","Egg4","FlashZoom","IgorFroehner","DanielVallin","CSTeam_Squirtle","HouariZegai","FerdinandSukhoi","Enrique213_VP","18502079446","Danangoffic","Alfraganus","HXSecurity","BanzaiTokyo","AirLiquide","GuidoTorres","AriniInf","AnsariMaviya","Danieljrsilva","ATOM27","HarryCordewener","CELEC_USTHB_CLUB","BorjaPelegrin","DaniyanP","AvindaAlamsyah","Dukou007","GabrielGardev","DarlanNoetzold","Fernal73","Darthveloper21","BuntsFidleyBits","Harprit_singh","Harvard_ATG","FalahRafif","EstefaniaExamples","Don_Jin","JonathanGWesterfield","Arnzero","AVE_cesar","AlfanFG","JuanCamiloRB","AnakCreative","GuoHaoZai","Groupe2_Musicoshop","Brayan7u7r","Hafizcode02","EJNB","DOH_CHD_CARAGA","JavaDogs","19Nikola96","Breeze1in1drizzle","250203726","FriendsOfREDAXO","Jeet21_dev","Gempitalarasati","Ithar","EdwinFLopez","Dracenco","IkeC","664709923","FlakyTestDetection","Bartleby2718","DrakeJohnny","HabibAroua","JoeLago","Aresha_RS","HappyLamia","Alch1mist","Aplear","Iteachprogramer","Bohemiaman","AyoubNafil","Guilherme_Sampaio","France_ioi","IgnasiBosch","Embarcadero","JamithNimantha","BenjaminAtbi","Emmett09","BlackCubes","JSRevolorio","E_Arsip","Bishobokeruwizeye","AtlasOfLivingAustralia","Blackpaper13","Alexlingl","Dinesh_Wasnik","HUSTERGS","Dasep12","AshfinRamadhandy","JacobBaynes","GuilhermePalma","CaliiTapia","HuangShubin99","Heroadn","AliHSZ99","HuyCongJr","JadynWong","GabrielEVT","ITMSFT","CodesAreHonest","AscEmu","JAMESKURIA","Algifarii","Ignasrocas1990","Jely101","J04N4","Cassolette","Agwis_Software","DavidHigueraFerrez","KValexander","DanielHenrique_Dev","2504Guimaraes","FerdianPio","Jcarnecer","Galuh80","Emesson_cmd","CristianSalazarAtalaya","DSM_DMS","Imam9","HosseinChibane","Ja3farMortada","Du_an_Giao_Duc","4156Team","GavrielDunev","1071607950","Evodia123456","Dandyamarta211","Fairizal","AndhikaK","JoaoG23","FarhanShoukat","FFahrenheit","Barry0310","ASXFA","AgnieszkaCh","IgorGuariroba","0_k_1","INF2021_PW_G20","IqbalSoft","AngelFlower","5730289021_NN","Black_Library","CodeFuller","GustavoQuinteroC","CareersSkillsIncubator","Activiti","Ankush34","AldonahZero","AliAbdurohman16","Bruuno07","AyuMuhafilah","DimovDimo","HeyCommunity","AndyZunaedy","1612SMShuvo","FarisLucky","BrunoTravassos","AlwinBrauns","AlexanderShniperson","AlanLWilliams","DrewBritt","Camillolevi","AroniainaSaotra","FutureB1t","ASRSoftware","AbsaOSS","Heggy19","BenatG_tech","Infact27","Aamir_97","Juniper","CactuseSecurity","Csineneo","ActiveBeanCoders","CVSink","Harlen520","ElGarageHub","GROUPBAOCAO4305","Gellish","FilanMaulaAndini","Aplycaebous","Braz99","JEMinick","Cauenumo","H_Gallardo","Eberm024","EvanGertis","Bigjoos","Dowsley","Freire71","Fayiawaluddinzaki","310369677","DrunkenLee","Bo_Xuan","AnathPKI","JohnLeather","EtienneCClarke","Ademboussetha","AdoboFighter","DaoDucVTCA","APIJSON","JC_Rave","ChecheSwap","GleysonAndrade","Baboo16cs11","362409960","IrfanFananiM","AnkhSalam","FleetFarming","Juanca92","Edsonrc","Jiachen_Zhang","Checkers300","GagaPoloJr","HigorRoc","AKASH_2019","JMonks14","AbhayLodhi","Danish12","121github","ChiaraDM","Ensembl","Jonasdart","CEPRE_UNI","DongJeremy","Amaulid","AmineMbaye","JWeonseok","BerliozLeChat","DCaceres2018","CurtisPreston99","CembZy","DannyRivasDev","Enter_36_chambers_of_wu_tang_fam","HalfMouse","Dragontalker","FerMdez","AlekseiSkr","AndreMoerza","Andrianto5501","528854302","ChenhuaFan","HVrettost","AhmedGamal98","JManToGithub","Ferriol_blip","8108905324","JakubVazan","Angelica2001143","CyberArkForTheCommunity","HuLing1025","Fandia9050","CareSet","DavidOlivera89","4kari","10go1027","AKS144","KKgautam61","Deluze","ElianMariano","Islan_Santos","AlexeyDota2Ru","ABenchM","AndreaBIGOT","Darkr4ptor","BiancaGiovanna","FoxBPM","ADEPT_Informatique","3plcoins","Excecutor1","Carter90","DataJunction","EndyPratama","CiccioTecchio","AlaaRdwan94","AryanArion","Escapist_007","AlexandreSato","CorentinMAG","Floating_Island","Azad94","JotunMichael","1988gadocansey","EricMalpass","IAAA_Lab","Finnerale","200106_UTA_PRS_NET","FationSH","Aiiishaaa","Gabo1122","09143613","AlekseevArtem","BrenoHenrrique","JosePerezHG","EdwinKassier","Fly_76","DenislavVelichkov","JONAS060708","Azzam279","AlejandroSantorum","HXLStandard","JoaquinMachXD2021","Dumbeldor","1809_UTA_Java","K4M1coder","Haikson","Dafana29","EghoPratama"]',
-        'host': b'localhost'}
-    result = udf.transform(None, None, kvargs)
-    print(result)
+    visualizer = TSNEVisualizer()
+    print("Paths:", len(visualizer.embeddings))
+    print("Fitting TSNE with 2 components for 1-level paths")
+    l1d2 = TSNEVisualizer.cache_get("l1d2", lambda: visualizer.fit_tsne(2, lambda x: len(x.split(".")) == 1))
+    print("Fitting TSNE with 2 components for 2-level paths")
+    l2d2 = TSNEVisualizer.cache_get("l2d2", lambda: visualizer.fit_tsne(2, lambda x: len(x.split(".")) == 2))
+    print("Fitting TSNE with 2 components for 3-level paths")
+    l3d2 = TSNEVisualizer.cache_get("l3d2", lambda: visualizer.fit_tsne(2, lambda x: len(x.split(".")) == 3))
+    print("Fitting TSNE with 2 components for 1-2 level paths")
+    l12d2 = TSNEVisualizer.cache_get("l12d2", lambda: visualizer.fit_tsne(2, lambda x: len(x.split(".")) <= 2))
+    print("Fitting TSNE with 2 components for all paths")
+    alld2 = TSNEVisualizer.cache_get("alld2", lambda: visualizer.fit_tsne(2))
+
+    visualizer.visualize_2d(l1d2, "1-level paths, 2 components")
+    visualizer.visualize_2d(l2d2, "2-level paths, 2 components")
+    visualizer.visualize_2d(l3d2, "3-level paths, 2 components")
+    visualizer.visualize_2d(l12d2, "1-2 level paths, 2 components")
+    visualizer.visualize_2d(alld2, "All paths, 2 components")
+
+
+

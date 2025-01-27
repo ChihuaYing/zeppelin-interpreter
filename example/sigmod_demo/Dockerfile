@@ -6,6 +6,7 @@ RUN pip install --no-cache-dir scikit-learn
 RUN pip install --no-cache-dir sentence-transformers
 RUN pip install --no-cache-dir pymilvus
 RUN pip install --no-cache-dir aiohttp
+RUN pip install --no-cache-dir matplotlib
 
 RUN <<EOT bash
 apt install -y wget apt-transport-https gpg
@@ -31,8 +32,43 @@ sed -i 's/needInitBasicUDFFunctions=.*/needInitBasicUDFFunctions=true/g' conf/co
 sed -i 's/enableRestService=.*/enableRestService=false/g' conf/config.properties
 EOT
 
-COPY schemapile-loader/target/schemapile-loader-0.7.2-shaded.jar temp/schemapile-loader.jar
-COPY resources/ScheduledEmbedding.yml temp/
+COPY <<EOF temp/ScheduledEmbedding.yml
+taskList:
+  - taskType: "iginx"
+    timeout: 10000000
+    sqlList:
+      - "select store_embedding(*, host='milvus', port='19530') from (show columns);"
+schedule: "every 3600 second"
+exportType: "none"
+EOF
 
-COPY --chmod=755 resources/iginx.sh  iginx.sh
+COPY <<EOF iginx.sh
+#!/bin/bash
+
+function notify() {
+    echo -e "\\033[35m""\$1""\\033[0m"
+}
+
+if [ ! -f "temp/iginx.out" ]; then
+    {
+      notify "Waiting for IGinX to be in service"
+      until grep -q "IGinX is now in service" temp/iginx.out
+      do
+          sleep 1
+      done
+
+      notify "Loading Schema Pile"
+      java -jar temp/schemapile-loader.jar
+
+      notify "Registering the transform job"
+      sbin/start_cli.sh -e "COMMIT TRANSFORM JOB 'temp/ScheduledEmbedding.yml';"
+    }&
+fi
+
+notify "Starting IGinX"
+sbin/start_iginx.sh | tee temp/iginx.out
+EOF
+
+RUN chmod +x iginx.sh
+
 CMD ["./iginx.sh"]

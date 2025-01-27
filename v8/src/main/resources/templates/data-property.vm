@@ -1,11 +1,4 @@
 <style>
-    #${paragraphId}_single_container {
-        width: 100%;
-        height: 80%;
-        background-color: #ffffff;
-        position: relative;
-        float: left;
-    }
     .data-property-container {
         height: 80vh;
         width: 100%;
@@ -25,9 +18,7 @@
     <label for="${paragraphId}_search_box">Semantic Search:</label>
     <input type="text" id="${paragraphId}_search_box" placeholder="Search..."/>
     <button id="${paragraphId}_search_button" type="button" class="btn btn-default btn-xs">Search</button>
-    <div id="${paragraphId}_iframe_container" class="panel panel-default" style="display: block">
-        <div id="${paragraphId}_single_container" class="panel-body"></div>
-    </div>
+    <div id="${paragraphId}_single_container" class="data-property-container panel panel-default"></div>
     <details>
         <summary class="data-property-summary">Graph Configuration</summary>
         <div id="${paragraphId}_configuraion" style="display: block"></div>
@@ -200,7 +191,6 @@
                 interaction:{
                     hover: true,
                     multiselect: true,
-                    navigationButtons: true
                 },
                 physics: {
                     enabled: false,
