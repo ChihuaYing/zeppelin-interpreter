@@ -6,7 +6,7 @@ RUN pip install --no-cache-dir scikit-learn
 RUN pip install --no-cache-dir sentence-transformers
 RUN pip install --no-cache-dir pymilvus
 RUN pip install --no-cache-dir aiohttp
-RUN pip install --no-cache-dir matplotlib
+RUN pip install --no-cache-dir tenacity
 
 RUN <<EOT bash
 apt install -y wget apt-transport-https gpg
@@ -38,7 +38,7 @@ taskList:
     timeout: 10000000
     sqlList:
       - "select store_embedding(*, host='milvus', port='19530') from (show columns);"
-schedule: "every 3600 second"
+schedule: "every 360000 second"
 exportType: "none"
 EOF
 

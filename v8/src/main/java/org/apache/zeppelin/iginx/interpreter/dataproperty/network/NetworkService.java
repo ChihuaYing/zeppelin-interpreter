@@ -184,13 +184,14 @@ public class NetworkService {
       for (int i = 0; i < clusterParts.length; i++) {
         int finalI = i;
         String clusterName = clusterParts[i];
-        idBuilder.append(clusterName);
+        idBuilder.append(clusterName.replace("[^a-zA-Z0-9]", "_"));
         parent =
             parent
                 .getChildren()
                 .computeIfAbsent(
                     clusterName,
-                    name -> new NetworkTreeNode(idBuilder.toString(), clusterName, finalI + 1));
+                    name ->
+                        new NetworkTreeNode(idBuilder.toString(), clusterName, finalI + 1, true));
         idBuilder.append(".");
       }
 
@@ -294,6 +295,9 @@ public class NetworkService {
     List<String> sourcePaths = new ArrayList<>();
     Map<String, String> sourceEmbeddingId2NetworkId = new HashMap<>();
     for (NetworkTreeNode childNode : node.getChildren().values()) {
+      if (childNode.isMergedNode()) {
+        continue;
+      }
       sourcePaths.add(childNode.getEmbeddingId());
       sourceEmbeddingId2NetworkId.put(childNode.getEmbeddingId(), childNode.getNetworkId());
     }
@@ -301,6 +305,9 @@ public class NetworkService {
     List<String> targetPaths = new ArrayList<>();
     Map<String, String> targetEmbeddingId2NetworkId = new HashMap<>();
     for (NetworkTreeNode visibleNode : visibleNodes) {
+      if (visibleNode.isMergedNode()) {
+        continue;
+      }
       targetPaths.add(visibleNode.getEmbeddingId());
       targetEmbeddingId2NetworkId.put(visibleNode.getEmbeddingId(), visibleNode.getNetworkId());
     }
@@ -345,6 +352,9 @@ public class NetworkService {
     List<String> visiblePaths = new ArrayList<>();
     Map<String, String> embeddingId2NetworkId = new HashMap<>();
     for (NetworkTreeNode childNode : visibleNodes) {
+      if (childNode.isMergedNode()) {
+        continue;
+      }
       visiblePaths.add(childNode.getEmbeddingId());
       embeddingId2NetworkId.put(childNode.getEmbeddingId(), childNode.getNetworkId());
     }

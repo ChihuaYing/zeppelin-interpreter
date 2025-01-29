@@ -10,13 +10,19 @@ public class NetworkTreeNode {
   private String mergedRoot;
   private boolean isExpanded;
   private boolean isShown;
+  private boolean isMergedNode;
 
   public NetworkTreeNode(String id, String name, int depth) {
+    this(id, name, depth, false);
+  }
+
+  public NetworkTreeNode(String id, String name, int depth, boolean isMergedNode) {
     this.id = id;
-    this.name = name;
+    this.name = name.replace("[^a-zA-Z0-9]", " ");
     this.depth = depth;
     this.isExpanded = false;
     this.isShown = false;
+    this.isMergedNode = isMergedNode;
   }
 
   public String getNetworkId() {
@@ -75,6 +81,14 @@ public class NetworkTreeNode {
 
   public void setShown(Boolean shown) {
     isShown = shown;
+  }
+
+  public boolean isMergedNode() {
+    return isMergedNode;
+  }
+
+  public void setMergedNode(boolean mergedNode) {
+    isMergedNode = mergedNode;
   }
 
   @Override

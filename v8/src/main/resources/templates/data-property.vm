@@ -1,6 +1,6 @@
 <style>
     .data-property-container {
-        height: 80vh;
+        height: 55vh;
         width: 100%;
         background-color: #f5f5f5;
         border: 1px solid #ddd;
@@ -162,17 +162,17 @@
                     improvedLayout: true,
                     hierarchical: {
                         enabled: true,
-                        levelSeparation: 400,
-                        nodeSpacing: 30,
+                        levelSeparation: 350,
+                        nodeSpacing: 32,
                         direction: 'LR',
                         sortMethod: 'directed',
-                        shakeTowards: 'leaves'
+                        shakeTowards: 'roots'
                     }
                 },
                 edges: {
                     font:{
                         face: 'tahoma',
-                        align: 'middle',
+                        align: 'top',
                     },
                     smooth: {
                         type: "cubicBezier",
@@ -245,8 +245,14 @@
                     return '#f9a825'; // 深度为2的颜色
                 case 3:
                     return '#8bc34a'; // 深度为3的颜色
+                case 4:
+                    return '#ff8a65'; // 深度为4的颜色
+                case 5:
+                    return '#90a4ae'; // 深度为5的颜色
+                case 6:
+                    return '#ffeb3b'; // 深度为6的颜色
                 default:
-                    return '#c5e1a5'; // 默认颜色
+                    return '#ffffff'; // 默认颜色
             }
         }
 

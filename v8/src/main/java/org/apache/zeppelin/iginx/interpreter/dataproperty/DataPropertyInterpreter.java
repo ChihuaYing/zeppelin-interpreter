@@ -114,9 +114,9 @@ public class DataPropertyInterpreter {
   }
 
   private InterpreterResult expandDataPropertyGraph(String[] args) {
-    Preconditions.checkArgument(args.length == 2, "Invalid number of arguments: " + args.length);
+    Preconditions.checkArgument(args.length >= 2, "Invalid number of arguments: " + args.length);
     String paragraphId = args[0];
-    String nodeId = args[1];
+    String nodeId = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
 
     NetworkService networkService = networkMap.get(paragraphId);
     Preconditions.checkNotNull(networkService, "Network service not found: " + paragraphId);
