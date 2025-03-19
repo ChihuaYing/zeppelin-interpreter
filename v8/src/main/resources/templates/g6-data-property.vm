@@ -1,0 +1,460 @@
+<style>
+    .data-property-container {
+        height: 55vh;
+        width: 100%;
+        background-color: #f5f5f5;
+        border: 1px solid #ddd;
+        box-sizing: border-box;
+    }
+
+    .data-property-summary {
+        display: list-item;
+        cursor: pointer;
+    }
+
+    .data-property-tooltip {
+        position: absolute;
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 5px 10px;
+        border-radius: 5px;
+        display: none;
+        pointer-events: none;
+        font-size: 12px;
+    }
+</style>
+
+<details open>
+    <summary class="data-property-summary">Data Property</summary>
+    <div style="display: flex; padding: 10px;">
+        <!-- 左侧面板 -->
+        <div style="width: 30%; padding: 10px; border-right: 1px solid #ccc;">
+            <div style="border: 1px solid #ddd; padding: 10px; border-radius: 5px;">
+                <h4>
+                    <span style="color: #808080;">AAA</span>
+                </h4>
+                <div style="margin-bottom: 12px;">
+                    <span>BBB</span>
+                </div>
+                <div style="background-color: #6c757d; color: white; padding: 5px 10px; border-radius: 5px; font-size: 1.2rem; display: inline-block;">
+                    Overview
+                </div>
+                <div style="margin-top: 10px;">
+                    row1
+                </div>
+                <hr>
+                <div style="background-color: #6c757d; color: white; padding: 5px 10px; border-radius: 5px; font-size: 1.2rem; display: inline-block;">
+                    Information
+                </div>
+                <div style="margin-top: 10px;">
+                    row2
+                </div>
+                <hr>
+                <div style="background-color: #6c757d; color: white; padding: 5px 10px; border-radius: 5px; font-size: 1.2rem; display: inline-block;">
+                    Semantic Search
+                </div>
+                <div style="display: flex; align-items: center; gap: 5px; margin-top: 10px;">
+                    <label for="${paragraphId}_search_box">Search: </label>
+                    <input type="text" id="${paragraphId}_search_box" placeholder="Search..."/>
+                    <button id="${paragraphId}_search_button" type="button" class="btn btn-default btn-xs">Search</button>
+                </div>
+            </div>
+        </div>
+        <!-- 右侧面板 -->
+        <div style="width: 70%; padding: 10px;">
+            <div id="${paragraphId}_single_container" class="data-property-container panel panel-default"></div>
+        </div>
+    </div>
+    <details>
+        <summary class="data-property-summary">Graph Configuration</summary>
+    </details>
+    <div id="tooltip" class="data-property-tooltip"></div>
+</details>
+
+<script>
+    (async function () {
+        await import('https://gw.alipayobjects.com/os/antv/pkg/_antv.g6-3.1.1/build/g6.js');
+        await import('https://gw.alipayobjects.com/os/antv/assets/lib/jquery-3.2.1.min.js');
+        await import('https://gw.alipayobjects.com/os/antv/pkg/_antv.hierarchy-0.5.0/build/hierarchy.js');
+
+        class IginxExecutor {
+            _noteId;
+
+            constructor() {
+                this._noteId = window.location.hash.split('/')[2];
+            }
+
+            async execute(statement) {
+                const notebook = await this._getNotebook();
+                const lastParagraph = notebook.paragraphs.at(-1);
+
+                if (lastParagraph.text) {
+                    alert('Please create a empty paragraph in last of notebook to execute interpreter');
+                    throw new Error('Please create a empty paragraph in last of notebook to execute interpreter');
+                }
+                const paragraphId = lastParagraph.id;
+
+                await this._updateParagraph(paragraphId, '%iginx ' + statement);
+                const executeResult = await this._executeParagraph(paragraphId);
+
+                await this._updateParagraph(paragraphId, '%iginx >data.property.clear');
+                await this._executeParagraph(paragraphId);
+
+                await this._updateParagraph(paragraphId, '');
+                return executeResult;
+            }
+
+            async _getNotebook() {
+                const apiUrl = 'api/notebook/' + this._noteId;
+                const response = await fetch(apiUrl);
+                this._checkResponse(response);
+                return (await response.json()).body;
+            }
+
+            async _updateParagraph(paragraphId, statement) {
+                const apiUrl = 'api/notebook/' + this._noteId + '/paragraph/' + paragraphId;
+                const response = await fetch(apiUrl, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        text: statement,
+                    })
+                });
+                this._checkResponse(response);
+            }
+
+            async _executeParagraph(paragraphId) {
+                const apiUrl = 'api/notebook/run/' + this._noteId + '/' + paragraphId;
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                });
+                const json = await response.json();
+                console.debug(json);
+                return json.body;
+            }
+
+            async _getParagraphResult(paragraphId) {
+                const apiUrl = 'api/notebook/' + this._noteId + '/paragraph/' + paragraphId;
+                const response = await fetch(apiUrl);
+                return (await response.json()).body;
+            }
+
+            _checkResponse(response) {
+                if (!response.ok) {
+                    const msg = 'Status: ' + response.status + '. ' + response.statusText;
+                    alert(msg);
+                    throw new Error(msg);
+                }
+            }
+        }
+
+        const container = document.getElementById('${paragraphId}_single_container');
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+
+        const graph = new G6.TreeGraph({
+            container: container,
+            width: width,
+            height: height,
+            modes: {
+                default: ['drag-canvas', 'zoom-canvas', 'drag-node'],
+            },
+            defaultNode: {
+                type: 'rect',
+                size: [10, 5],
+                style: {
+                    fill: '#97c2fc',
+                    stroke: '#8f8b8b',
+                    lineWidth: 1,
+                },
+                labelCfg: {
+                    position: 'left',
+                    offset: 5,
+                    style: {
+                        fill: '#000000',
+                        fontSize: 12,
+                        textAlign: 'right',
+                    },
+                },
+            },
+            defaultEdge: {
+                shape: 'cubic-horizontal',
+                style: {
+                    stroke: '#A3B1BF'
+                }
+            },
+            layout: {
+                type: 'compactBox',
+                direction: 'LR',
+                getId: function getId(d) {
+                    return d.id;
+                },
+                getHeight: () => 16,
+                getWidth: () => 16,
+                getVGap: () => 10,
+                getHGap: () => 100
+            }
+        });
+
+        // 初始化数据
+        const topNodesStr = '${nodeList}';
+        const topNodes = JSON.parse(topNodesStr);
+
+        const topRelationStr = '${relationList}';
+        const topRelations = JSON.parse(topRelationStr);
+
+        const nodeMap = {};
+
+        // 转换数据为 G6 需要的格式
+        function convertToTreeData(nodes, relations) {
+            const rootNode = nodes[0];
+            const treeData = {
+                id: rootNode.id,
+                label: rootNode.name || "Data Asset",
+                depth: rootNode.depth,
+                children: [],
+            };
+
+            nodeMap[rootNode.id] = treeData;
+
+            // 添加子节点
+            for (let i = 1; i < nodes.length; i++) {
+                const node = nodes[i];
+                const parent = nodeMap[node.parentId] || treeData;
+                const child = {
+                    id: node.id,
+                    label: node.name,
+                    depth: node.depth,
+                    children: [],
+                };
+                parent.children.push(child);
+                nodeMap[node.id] = child;
+            }
+
+            // 添加额外关系
+            for (let i = 0; i < relations.length; i++) {
+                const relation = relations[i];
+                const source = nodeMap[relation.from];
+                const target = nodeMap[relation.to];
+                if (source && target) {
+                    source.children.push({
+                        id: relation.from + "->" + relation.to,
+                        label: relation.relation,
+                        depth: source.depth + 1,
+                        relation: true,
+                        style: {
+                            stroke: 'red',
+                            lineWidth: 2,
+                        },
+                    });
+                }
+            }
+
+            return treeData;
+        }
+
+        const treeData = convertToTreeData(topNodes, topRelations);
+        console.debug(treeData);
+
+        // 渲染图
+        graph.data(treeData);
+        graph.render();
+        graph.fitView();
+
+        // 绑定单击事件
+        graph.on('node:click', function (evt) {
+            const nodeModel = evt.item.getModel();
+            console.debug('nodeModel:', nodeModel.id);
+            handleNodeClickWithThrottle(nodeModel.id);
+        });
+
+        const tooltip = document.getElementById('tooltip');
+
+        // 监听鼠标悬浮在结点上
+        graph.on('node:mouseenter', (evt) => {
+            const node = evt.item;
+            const model = node.getModel();
+            graph.updateItem(node, {
+                style: {
+                    stroke: '#d9d6d6',
+                    lineWidth: 2,
+                },
+            });
+            tooltip.innerText = "结点: " + model.id;
+            tooltip.style.display = 'block';
+            tooltip.style.left = "" + (evt.clientX) + "px";
+            tooltip.style.top = "" + (evt.clientY) + "px";
+        });
+
+        // 监听鼠标移出结点
+        graph.on('node:mouseleave', (evt) => {
+            const node = evt.item;
+            graph.updateItem(node, {
+                style: {
+                    stroke: '#8f8b8b',
+                    lineWidth: 1,
+                },
+            });
+            tooltip.style.display = 'none';
+        });
+
+        // 监听鼠标悬浮在边上
+        graph.on('edge:mouseenter', (evt) => {
+            const { item } = evt;
+            const model = item.getModel();
+            if (model.label) {
+                graph.updateItem(item, {
+                    style: {
+                        stroke: 'red',
+                        lineWidth: 2,
+                    },
+                });
+                tooltip.innerText = model.label;
+                tooltip.style.display = 'block';
+                tooltip.style.left = "" + (evt.clientX) + "px";
+                tooltip.style.top = "" + (evt.clientY) + "px";
+            }
+        });
+
+        // 监听鼠标离开边
+        graph.on('edge:mouseleave', (evt) => {
+            const { item } = evt;
+            const model = item.getModel();
+            if (model.label) {
+                graph.updateItem(item, {
+                    style: {
+                        stroke: '#ff6666',
+                        lineWidth: 1,
+                    },
+                });
+                tooltip.style.display = 'none';
+            }
+        });
+
+        let lastClickTime = 0;
+        const throttleDelay = 1000;  // 节流间隔
+
+        // 节流函数
+        async function handleNodeClickWithThrottle(nodeId) {
+            const now = Date.now();
+            if (now - lastClickTime > throttleDelay) {
+                lastClickTime = now;
+                await handleNodeClick(nodeId);
+                const runTime = Date.now() - now;
+                console.log("handleNodeClick run time for " + nodeId + " is: " + runTime + "ms");
+            } else {
+                showFrequentClickAlert();
+            }
+        }
+
+        // 弹出提示框函数
+        function showFrequentClickAlert() {
+            console.log("showFrequentClickAlert");
+            // todo: 设置提示框，提示点击过于频繁
+            setTimeout(() => {
+                // todo: 去除提示框
+            }, 1000);
+        }
+
+        // 修改节点的颜色根据深度设置
+        function getColorByDepth(depth) {
+            switch (depth) {
+                case 0:
+                    return '#97c2fc'; // 深度为0的颜色
+                case 1:
+                    return '#ffb6c1'; // 深度为1的颜色
+                case 2:
+                    return '#f9a825'; // 深度为2的颜色
+                case 3:
+                    return '#8bc34a'; // 深度为3的颜色
+                case 4:
+                    return '#ff8a65'; // 深度为4的颜色
+                case 5:
+                    return '#90a4ae'; // 深度为5的颜色
+                case 6:
+                    return '#ffeb3b'; // 深度为6的颜色
+                default:
+                    return '#ffffff'; // 默认颜色
+            }
+        }
+
+        async function handleNodeClick(nodeId) {
+            const executor = new IginxExecutor(window.location.protocol, window.location.host);
+            console.debug('handleNodeClick:', nodeId);
+            const statement = '>data.property.expand ${paragraphId} ' + nodeId;
+            const data = await executor.execute(statement);
+            console.debug('handleNodeClick executeInterpreter result:', data);
+            const resultJson = JSON.parse(data.msg[0].data);
+            console.debug('handleNodeClick resultJson:', resultJson);
+            await handleResult(resultJson, nodeId);
+        }
+
+        function handleResult(result, nodeId) {
+            console.log("begin handleResult");
+            // clearRelation();
+            if (result && result.add) {
+                console.log("handle add");
+                const parent = nodeMap[nodeId];
+                // 处理 add 中的 nodes
+                if (result.add.nodes) {
+                    result.add.nodes.forEach(node => {
+                        const child = {
+                            id: node.id,
+                            label: node.name,
+                            depth: node.depth,
+                            children: [],
+                        };
+                        parent.children.push(child);
+                        nodeMap[node.id] = child;
+                    });
+                }
+
+                graph.refreshLayout()
+
+                // 处理 add 中的 links
+                if (result.add.links) {
+                    result.add.links.forEach(link => {
+                        const edgeConfig = {
+                            source: link.from,
+                            target: link.to,
+                            label: link.relation,
+                            style: {
+                                stroke: '#ff6666',
+                                lineWidth: 1,
+                                radius: 10,
+                            },
+                            labelCfg: {
+                                style: {
+                                    opacity: 0
+                                }
+                            }
+                        };
+                        if (nodeMap[link.from].depth === nodeMap[link.to].depth) {
+                            edgeConfig.shape = 'quadratic';
+                            edgeConfig.curveOffset = 100;
+                        }
+                        graph.addItem('edge', edgeConfig);
+                    });
+                }
+                graph.fitView();
+            }
+        }
+
+        document.getElementById('${paragraphId}_search_button').onclick = async () => {
+            const executor = new IginxExecutor();
+            const result = await executor.execute('>data.property.search ${paragraphId} ' + document.getElementById('${paragraphId}_search_box').value);
+            const networkNodeIds = JSON.parse(result.msg[0].data);
+            console.log('networkNodeIds:', networkNodeIds);
+            networkNodeIds.forEach(nodeId => {
+                graph.updateItem(nodeId, {
+                    style: {
+                        fill: '#ffeb3b',
+                        stroke: '#fbc02d'
+                    }
+                });
+            });
+        };
+    })();
+</script>

@@ -65,7 +65,7 @@ public class NetworkService {
         (Object object, String name, Object value) -> {
           return "id".equals(name) || "name".equals(name) || "depth".equals(name);
         };
-    String nodeString = JSON.toJSONString(nodeList, filter);
+    String nodeString = JSON.toJSONString(nodeList, filter).replace("'", "\\'");
     LOGGER.info("the nodeString is {}", nodeString);
 
     String relationString = "";
@@ -82,7 +82,7 @@ public class NetworkService {
 
     velocityContext.put("nodeList", nodeString);
     velocityContext.put("relationList", relationString);
-    return VelocityUtil.generate("templates/data-property.vm", velocityContext);
+    return VelocityUtil.generate("templates/g6-data-property.vm", velocityContext);
   }
 
   public String handleNodeClick(String nodeId) {
