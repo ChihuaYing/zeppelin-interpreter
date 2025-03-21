@@ -1,6 +1,6 @@
 <style>
     .data-property-container {
-        height: 55vh;
+        height: 80vh;
         width: 100%;
         background-color: #f5f5f5;
         border: 1px solid #ddd;
@@ -26,45 +26,88 @@
 
 <details open>
     <summary class="data-property-summary">Data Property</summary>
-    <div style="display: flex; padding: 10px;">
+    <div style="display: flex; padding: 10px; gap: 10px;">
         <!-- 左侧面板 -->
-        <div style="width: 30%; padding: 10px; border-right: 1px solid #ccc;">
-            <div style="border: 1px solid #ddd; padding: 10px; border-radius: 5px;">
-                <h4>
-                    <span style="color: #808080;">AAA</span>
-                </h4>
-                <div style="margin-bottom: 12px;">
-                    <span>BBB</span>
-                </div>
-                <div style="background-color: #6c757d; color: white; padding: 5px 10px; border-radius: 5px; font-size: 1.2rem; display: inline-block;">
-                    Overview
-                </div>
-                <div style="margin-top: 10px;">
-                    row1
-                </div>
-                <hr>
-                <div style="background-color: #6c757d; color: white; padding: 5px 10px; border-radius: 5px; font-size: 1.2rem; display: inline-block;">
-                    Information
-                </div>
-                <div style="margin-top: 10px;">
-                    row2
-                </div>
-                <hr>
-                <div style="background-color: #6c757d; color: white; padding: 5px 10px; border-radius: 5px; font-size: 1.2rem; display: inline-block;">
-                    Semantic Search
-                </div>
-                <div style="display: flex; align-items: center; gap: 5px; margin-top: 10px;">
-                    <label for="${paragraphId}_search_box">Search: </label>
-                    <input type="text" id="${paragraphId}_search_box" placeholder="Search..."/>
-                    <button id="${paragraphId}_search_button" type="button" class="btn btn-default btn-xs">Search</button>
+        <details open id="${paragraphId}_sidebar" style="display: flex; flex-direction: row-reverse; transition: width 0.3s;">
+            <summary style="writing-mode: vertical-rl; text-align: center; padding: 10px; background: #6c757d; color: white; cursor: pointer; border-left: 1px solid #ccc;">
+                ☰ Hide Sidebar
+            </summary>
+            <div id="${paragraphId}_leftPanel" style="width: 300px; padding: 10px; border-right: 1px solid #ccc; background: #f8f9fa;">
+                <div style="border: 1px solid #ddd; padding: 10px; border-radius: 5px;">
+                    <h4><span style="color: #808080;">Title</span></h4>
+                    <div style="margin-bottom: 12px;"><span>description</span></div>
+                    <div style="background-color: #6c757d; color: white; padding: 5px 10px; border-radius: 5px; font-size: 1.2rem; display: inline-block;">
+                        Overview
+                    </div>
+                    <div style="display: flex; gap: 20px;">
+                        <div style="margin-top: 10px;"><strong>Nodes: </strong><span id="${paragraphId}_node_num"></span></div>
+                        <div style="margin-top: 10px;"><strong>Relations: </strong><span id="${paragraphId}_relation_num"></span></div>
+                    </div>
+                    <hr>
+                    <div style="background-color: #6c757d; color: white; padding: 5px 10px; border-radius: 5px; font-size: 1.2rem; display: inline-block;">
+                        Choose
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;">
+                        <div style="display: flex; align-items: center;">
+                            <label for="${paragraphId}_relation_select" style="margin-right: 10px; width: 100px; text-align: right;"><strong>Relation UDF：</strong></label>
+                            <select id="${paragraphId}_relation_select" style="padding: 5px; border: 1px solid #ccc; border-radius: 4px;">
+                                <option value="option1">UDF 1</option>
+                                <option value="option2">UDF 2</option>
+                                <option value="option3">UDF 3</option>
+                            </select>
+                        </div>
+                        <div style="display: flex; align-items: center;">
+                            <label for="${paragraphId}_search_select" style="margin-right: 10px; width: 100px; text-align: right;"><strong>Search UDF：</strong></label>
+                            <select id="${paragraphId}_search_select" style="padding: 5px; border: 1px solid #ccc; border-radius: 4px;">
+                                <option value="option1">UDF 1</option>
+                                <option value="option2">UDF 2</option>
+                                <option value="option3">UDF 3</option>
+                            </select>
+                        </div>
+                    </div>
+                    <hr>
+                    <div style="background-color: #6c757d; color: white; padding: 5px 10px; border-radius: 5px; font-size: 1.2rem; display: inline-block;">
+                        Semantic Search
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 5px; margin-top: 10px;">
+                        <label for="${paragraphId}_search_box" style="width: 100px; text-align: right;"><Strong>Keyword: </Strong></label>
+                        <input type="text" id="${paragraphId}_search_box" style="width: 100px;" placeholder="Search..."/>
+                        <button id="${paragraphId}_search_button" style="width: 60px;" type="button" class="btn btn-default btn-xs">Search</button>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 5px; margin-top: 10px;">
+                        <label for="${paragraphId}_search_top_k_box" style="width: 100px; text-align: right;"><Strong>Top K: </Strong></label>
+                        <input type="text" id="${paragraphId}_search_top_k_box" style="width: 100px;" placeholder="10"/>
+                        <button style="visibility: hidden; width: 60px;" type="button" class="btn btn-default btn-xs"></button>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 5px; margin-top: 10px;">
+                        <div style="width: 100%; max-width: 600px; max-height: 300px; overflow: auto; border: 1px solid #ddd;">
+                            <table id="${paragraphId}_search_table" border="1"
+                                   style="width: 300px; border-collapse: collapse; margin-top: 10px; table-layout: fixed;">
+                                <thead>
+                                <tr>
+                                    <th style="width: 50px; text-align: center;">No.</th>
+                                    <th style="width: 250px; text-align: center; white-space: nowrap;">Path</th>
+                                </tr>
+                                </thead>
+                                <tbody id="${paragraphId}_search_table_body">
+                                <tr>
+                                    <td style="text-align: center;">1</td>
+                                    <td>rootId.*.path.*</td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
+        </details>
+
         <!-- 右侧面板 -->
-        <div style="width: 70%; padding: 10px;">
+        <div id="${paragraphId}_rightPanel" style="flex-grow: 1; padding: 10px; transition: width 0.3s;">
             <div id="${paragraphId}_single_container" class="data-property-container panel panel-default"></div>
         </div>
     </div>
+
     <details>
         <summary class="data-property-summary">Graph Configuration</summary>
     </details>
@@ -262,6 +305,7 @@
         graph.data(treeData);
         graph.render();
         graph.fitView();
+        await resetOverview();
 
         // 绑定单击事件
         graph.on('node:click', function (evt) {
@@ -381,6 +425,7 @@
         }
 
         async function handleNodeClick(nodeId) {
+            // todo: 命令中添加上relation UDF的信息
             const executor = new IginxExecutor(window.location.protocol, window.location.host);
             console.debug('handleNodeClick:', nodeId);
             const statement = '>data.property.expand ${paragraphId} ' + nodeId;
@@ -389,6 +434,7 @@
             const resultJson = JSON.parse(data.msg[0].data);
             console.debug('handleNodeClick resultJson:', resultJson);
             await handleResult(resultJson, nodeId);
+            await resetOverview();
         }
 
         function handleResult(result, nodeId) {
@@ -433,7 +479,7 @@
                         };
                         if (nodeMap[link.from].depth === nodeMap[link.to].depth) {
                             edgeConfig.shape = 'quadratic';
-                            edgeConfig.curveOffset = 100;
+                            edgeConfig.curveOffset = 150;
                         }
                         graph.addItem('edge', edgeConfig);
                     });
@@ -442,19 +488,47 @@
             }
         }
 
+        function resetOverview() {
+            const nodeNum = graph.getNodes().length;
+            const relationNum = graph.getEdges().filter(edge => edge.getModel().label !== undefined).length;
+            document.getElementById("${paragraphId}_node_num").textContent = nodeNum;
+            document.getElementById("${paragraphId}_relation_num").textContent = relationNum;
+        }
+
         document.getElementById('${paragraphId}_search_button').onclick = async () => {
+            // todo: 命令中添加上search UDF 和 Top K的信息
             const executor = new IginxExecutor();
             const result = await executor.execute('>data.property.search ${paragraphId} ' + document.getElementById('${paragraphId}_search_box').value);
             const networkNodeIds = JSON.parse(result.msg[0].data);
             console.log('networkNodeIds:', networkNodeIds);
-            networkNodeIds.forEach(nodeId => {
+            let tableBody = document.getElementById("${paragraphId}_search_table_body");
+            tableBody.innerHTML = "";
+            networkNodeIds.forEach((nodeId, index) => {
                 graph.updateItem(nodeId, {
                     style: {
                         fill: '#ffeb3b',
                         stroke: '#fbc02d'
                     }
                 });
+                let row = tableBody.insertRow();
+                let cell1 = row.insertCell(0);
+                cell1.style.textAlign = "center";
+                cell1.textContent = index + 1;
+                let cell2 = row.insertCell(1);
+                cell2.textContent = nodeId;
             });
         };
+
+        document.getElementById("${paragraphId}_sidebar").addEventListener("toggle", function () {
+            const rightPanel = document.getElementById("${paragraphId}_rightPanel");
+            const summary = this.querySelector("summary");
+            if (this.open) {
+                rightPanel.style.width = "calc(100% - 320px)";
+                summary.textContent = "☰ Hide Sidebar";
+            } else {
+                rightPanel.style.width = "100%";
+                summary.textContent = "☰ Show Sidebar";
+            }
+        });
     })();
 </script>

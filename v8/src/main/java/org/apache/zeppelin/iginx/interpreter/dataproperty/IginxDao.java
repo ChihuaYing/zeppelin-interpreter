@@ -4,6 +4,7 @@ import cn.edu.tsinghua.iginx.exception.SessionException;
 import cn.edu.tsinghua.iginx.session.Session;
 import cn.edu.tsinghua.iginx.session.SessionExecuteSqlResult;
 import cn.edu.tsinghua.iginx.utils.FormatUtils;
+import cn.edu.tsinghua.iginx.utils.Pair;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.google.common.base.Preconditions;
@@ -14,6 +15,7 @@ import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.zeppelin.iginx.interpreter.dataproperty.entry.Relation;
+import org.apache.zeppelin.iginx.util.TableUtil;
 
 public class IginxDao {
   private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -28,7 +30,7 @@ public class IginxDao {
     this.milvusPort = milvusPort;
   }
 
-  public List<String[]> getPathOf(String sql) {
+  public Pair<List<String[]>, String> getPathOf(String sql) {
     if (sql.isEmpty()) {
       return getPathOf("SHOW COLUMNS;");
     }
@@ -55,7 +57,8 @@ public class IginxDao {
       paths.add(queryList.get(i).get(pathColumnIndex));
     }
     Pattern pattern = Pattern.compile("\\.");
-    return paths.stream().map(pattern::split).collect(Collectors.toList());
+    String table = TableUtil.buildSingleFormResult(queryList);
+    return new Pair<>(paths.stream().map(pattern::split).collect(Collectors.toList()), table);
   }
 
   public Multimap<String, String> getGroupingOf(Set<String> nodes) {

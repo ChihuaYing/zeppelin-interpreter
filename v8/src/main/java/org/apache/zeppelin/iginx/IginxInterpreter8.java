@@ -324,7 +324,7 @@ public class IginxInterpreter8 extends Interpreter {
         List<List<String>> queryList =
             sqlResult.getResultInList(
                 keyTimeEnable, FormatUtils.DEFAULT_TIME_FORMAT, timePrecision);
-        msg = buildSingleFormResult(queryList);
+        msg = TableUtil.buildSingleFormResult(queryList);
         interpreterResult.add(InterpreterResult.Type.TABLE, msg);
       } else if (sqlResult.getSqlType() == SqlType.Query && sql.startsWith("explain")) {
         msg =
@@ -705,22 +705,6 @@ public class IginxInterpreter8 extends Interpreter {
     return cache;
   }
 
-  private String buildSingleFormResult(List<List<String>> queryList) {
-    StringBuilder builder = new StringBuilder();
-    for (int i = 0; i < queryList.size(); i++) {
-      List<String> row = queryList.get(i);
-      for (String val : row) {
-        if (i != 0) {
-          val = convertToHTMLString(val);
-        }
-        builder.append(val).append(TAB);
-      }
-      builder.deleteCharAt(builder.length() - 1);
-      builder.append(NEWLINE);
-    }
-    return builder.toString();
-  }
-
   /**
    * 将给定的文件列表压缩成zip文件，输出到给定的输出流中
    *
@@ -897,12 +881,6 @@ public class IginxInterpreter8 extends Interpreter {
             .trim()
             .split("(?<=;)");
     return Arrays.stream(tmp).map(String::trim).toArray(String[]::new);
-  }
-
-  private String convertToHTMLString(String str) {
-    return str.contains("\n")
-        ? str.replace("\n", "<br>").replace("\t", "&nbsp;&nbsp;&nbsp;&nbsp;")
-        : str;
   }
 
   /**

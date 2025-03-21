@@ -1,6 +1,7 @@
 package org.apache.zeppelin.iginx.interpreter.dataproperty;
 
 import cn.edu.tsinghua.iginx.session.Session;
+import cn.edu.tsinghua.iginx.utils.Pair;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Preconditions;
@@ -79,7 +80,9 @@ public class DataPropertyInterpreter {
 
   private InterpreterResult displayDataPropertyGraph(
       InterpreterContext context, String[] args, boolean allowMerge) {
-    List<String[]> paths = iginx.getPathOf(String.join(" ", args));
+    Pair<List<String[]>, String> pair = iginx.getPathOf(String.join(" ", args));
+    List<String[]> paths = pair.getK();
+    String table = pair.getV();
     NetworkService networkService =
         new NetworkService(allowMerge, true, context.getParagraphId(), paths, iginx);
     networkMap.put(context.getParagraphId(), networkService);
@@ -88,14 +91,23 @@ public class DataPropertyInterpreter {
     velocityContext.put("paragraphId", context.getParagraphId());
 
     String html = networkService.initNetwork(velocityContext);
-    return new InterpreterResult(InterpreterResult.Code.SUCCESS, InterpreterResult.Type.HTML, html);
+
+    InterpreterResult interpreterResult = new InterpreterResult(InterpreterResult.Code.SUCCESS);
+    interpreterResult.add(InterpreterResult.Type.HTML, html);
+    interpreterResult.add(InterpreterResult.Type.TABLE, table);
+    return interpreterResult;
   }
 
   private InterpreterResult displayDataPropertyTree(InterpreterContext context, String[] args)
       throws JsonProcessingException {
-    List<String[]> paths = iginx.getPathOf(String.join(" ", args));
+    Pair<List<String[]>, String> pair = iginx.getPathOf(String.join(" ", args));
+    List<String[]> paths = pair.getK();
+    String table = pair.getV();
     String html = generateDataPropertyHtml(paths, context);
-    return new InterpreterResult(InterpreterResult.Code.SUCCESS, InterpreterResult.Type.HTML, html);
+    InterpreterResult interpreterResult = new InterpreterResult(InterpreterResult.Code.SUCCESS);
+    interpreterResult.add(InterpreterResult.Type.HTML, html);
+    interpreterResult.add(InterpreterResult.Type.TABLE, table);
+    return interpreterResult;
   }
 
   public String generateDataPropertyHtml(List<String[]> paths, InterpreterContext context)
