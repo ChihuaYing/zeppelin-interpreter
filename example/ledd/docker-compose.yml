@@ -63,8 +63,8 @@ services:
       - ./model_cache:/root/.cache/huggingface/hub
       - ./cache:/app/cache
       - ./logs/iginx:/app/logs
-      - ../../v8/src/main/resources/udf/udf_list:/app/udf_funcs/udf_list
-      - ../../v8/src/main/resources/udf/EmbeddingUtils.py:/app/udf_funcs/python_scripts/EmbeddingUtils.py
+      - ../../udf/udf_list:/app/udf_funcs/udf_list
+      - ../../udf/EmbeddingUtils.py:/app/udf_funcs/python_scripts/EmbeddingUtils.py
       - ./schemapile-loader/target/schemapile-loader-0.7.2-shaded.jar:/app/temp/schemapile-loader.jar
     environment:
       zookeeperConnectionString: zk:2181

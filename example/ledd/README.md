@@ -4,21 +4,16 @@
 
 ## 构建
 
-构建 zeppelin-interpreter 项目，在项目根目录执行
+构建 zeppelin-interpreter 和 schemapile-loader
 
-```
-mvn clean package
-```
-
-在 schemapile-loader 项目，在 schemapile-loader 子文件执行
-
-```
-mvn clean package
+```shell
+mvn -f ../../pom.xml clean package
+mvn -f schemapile-loader/pom.xml clean package
 ```
 
-构建并运行容器，在当前目录执行
+构建并运行容器
 
-```
+```shell
 docker compose up --build
 ```
 

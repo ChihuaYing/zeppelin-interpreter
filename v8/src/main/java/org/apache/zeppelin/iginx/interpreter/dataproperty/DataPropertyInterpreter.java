@@ -2,15 +2,12 @@ package org.apache.zeppelin.iginx.interpreter.dataproperty;
 
 import cn.edu.tsinghua.iginx.session.Session;
 import cn.edu.tsinghua.iginx.utils.Pair;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Preconditions;
 import java.util.*;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.velocity.VelocityContext;
-import org.apache.zeppelin.iginx.interpreter.dataproperty.entry.GraphData;
 import org.apache.zeppelin.iginx.interpreter.dataproperty.network.NetworkService;
-import org.apache.zeppelin.iginx.util.VelocityUtil;
 import org.apache.zeppelin.interpreter.InterpreterContext;
 import org.apache.zeppelin.interpreter.InterpreterResult;
 import org.slf4j.Logger;
@@ -33,11 +30,8 @@ public class DataPropertyInterpreter {
   public boolean canInterpret(String sql, InterpreterContext context) {
     String cmd = sql.trim().split(" ")[0];
     switch (cmd) {
-      case ">network.asset.data":
-      case ">network.asset.data.grouping":
       case ">network":
       case ">network.grouping":
-      case ">tree":
       case INTERNAL_STATEMENT_PREFIX + ".expand":
       case INTERNAL_STATEMENT_PREFIX + ".search":
       case INTERNAL_STATEMENT_PREFIX + ".clear":
@@ -55,14 +49,10 @@ public class DataPropertyInterpreter {
 
     try {
       switch (cmd) {
-        case ">network.asset.data":
         case ">network":
           return displayDataPropertyGraph(context, args, false);
-        case ">network.asset.data.grouping":
         case ">network.grouping":
           return displayDataPropertyGraph(context, args, true);
-        case ">tree":
-          return displayDataPropertyTree(context, args);
         case INTERNAL_STATEMENT_PREFIX + ".expand":
           return expandDataPropertyGraph(args);
         case INTERNAL_STATEMENT_PREFIX + ".search":
@@ -79,12 +69,13 @@ public class DataPropertyInterpreter {
   }
 
   private InterpreterResult displayDataPropertyGraph(
-      InterpreterContext context, String[] args, boolean allowMerge) {
-    Pair<List<String[]>, String> pair = iginx.getPathOf(String.join(" ", args));
+      InterpreterContext context, String[] args, boolean needMerge) {
+    String pattern = String.join(" ", args);
+    Pair<List<String[]>, String> pair = iginx.getPathOf(pattern);
     List<String[]> paths = pair.getK();
     String table = pair.getV();
     NetworkService networkService =
-        new NetworkService(allowMerge, true, context.getParagraphId(), paths, iginx);
+        new NetworkService(needMerge, true, context.getParagraphId(), paths, iginx, pattern);
     networkMap.put(context.getParagraphId(), networkService);
 
     VelocityContext velocityContext = new VelocityContext();
@@ -96,33 +87,6 @@ public class DataPropertyInterpreter {
     interpreterResult.add(InterpreterResult.Type.HTML, html);
     interpreterResult.add(InterpreterResult.Type.TABLE, table);
     return interpreterResult;
-  }
-
-  private InterpreterResult displayDataPropertyTree(InterpreterContext context, String[] args)
-      throws JsonProcessingException {
-    Pair<List<String[]>, String> pair = iginx.getPathOf(String.join(" ", args));
-    List<String[]> paths = pair.getK();
-    String table = pair.getV();
-    String html = generateDataPropertyHtml(paths, context);
-    InterpreterResult interpreterResult = new InterpreterResult(InterpreterResult.Code.SUCCESS);
-    interpreterResult.add(InterpreterResult.Type.HTML, html);
-    interpreterResult.add(InterpreterResult.Type.TABLE, table);
-    return interpreterResult;
-  }
-
-  public String generateDataPropertyHtml(List<String[]> paths, InterpreterContext context)
-      throws JsonProcessingException {
-    GraphData.Builder builder = new GraphData.Builder();
-    for (String[] path : paths) {
-      builder.addNode(path);
-    }
-    GraphData graphData = builder.build();
-    String graphDataJson = MAPPER.writeValueAsString(graphData);
-
-    VelocityContext velocityContext = new VelocityContext();
-    velocityContext.put("paragraphId", context.getParagraphId());
-    velocityContext.put("data", graphDataJson);
-    return VelocityUtil.generate("templates/data-property-tree.vm", velocityContext);
   }
 
   private InterpreterResult expandDataPropertyGraph(String[] args) {

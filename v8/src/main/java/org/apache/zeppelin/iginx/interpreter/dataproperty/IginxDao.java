@@ -30,31 +30,23 @@ public class IginxDao {
     this.milvusPort = milvusPort;
   }
 
-  public Pair<List<String[]>, String> getPathOf(String sql) {
-    if (sql.isEmpty()) {
-      return getPathOf("SHOW COLUMNS;");
-    }
+  public Pair<List<String[]>, String> getPathOf(String iginxPattern) {
+    Objects.requireNonNull(iginxPattern);
 
     SessionExecuteSqlResult sqlResult;
     try {
-      sqlResult = session.executeSql(sql);
+      sqlResult =
+          session.executeSql(
+              String.format("select path, type from (show columns %s);", iginxPattern));
     } catch (SessionException e) {
-      throw new RuntimeException("Failed to execute SQL: " + sql, e);
+      throw new RuntimeException("Failed to execute SQL: " + iginxPattern, e);
     }
 
     List<List<String>> queryList =
         sqlResult.getResultInList(false, FormatUtils.DEFAULT_TIME_FORMAT, null);
-    int pathColumnIndex = queryList.get(0).indexOf("Path");
-    if (pathColumnIndex == -1) {
-      pathColumnIndex = queryList.get(0).indexOf("path");
-    }
-    if (pathColumnIndex == -1) {
-      throw new IllegalArgumentException(
-          "'Path' or 'path' column not found in the result: " + queryList.get(0));
-    }
     List<String> paths = new ArrayList<>();
     for (int i = 1; i < queryList.size(); i++) {
-      paths.add(queryList.get(i).get(pathColumnIndex));
+      paths.add(queryList.get(i).get(0));
     }
     Pattern pattern = Pattern.compile("\\.");
     String table = TableUtil.buildSingleFormResult(queryList);
@@ -109,18 +101,12 @@ public class IginxDao {
     return queryList;
   }
 
-  public List<String> search(List<String> visiblePaths, String description) {
-    ArrayNode arrayNode = MAPPER.createArrayNode();
-    for (String path : visiblePaths) {
-      arrayNode.add(path);
-    }
-    String pathsJson = arrayNode.toString();
-
+  public List<String> search(String pattern, String description) {
     String sql =
         "select search_embedding(*, description='"
             + description
-            + "', paths='"
-            + pathsJson
+            + "', pattern='"
+            + pattern
             + "', host='"
             + milvusHost
             + "', port='"

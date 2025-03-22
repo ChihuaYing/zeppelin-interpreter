@@ -224,8 +224,13 @@ class MilvusDao:
         print("Loading milvus collection")
         self.collection.load()
 
-    def search_similarity(self, embedding, path_list_json):
+    def search_similarity(self, embedding, pattern):
         print("Searching similar embeddings")
+
+        expr = None
+        if len(pattern) > 0:
+            milvus_pattern = pattern.replace("*", "%")
+            expr ='path like "' + milvus_pattern +"'"
 
         entities = self.collection.search(
             data=[embedding],
@@ -233,7 +238,10 @@ class MilvusDao:
             output_fields=["path"],
             limit=10,
             param={"metric_type": "COSINE"},
-            expr="path in " + path_list_json
+            expr=expr,
+            search_params = {
+                "hints": "iterative_filter"
+            }
         )
 
         return [hit.fields["path"] for hit in entities[0]]
@@ -358,7 +366,7 @@ class UDFSearchEmbedding:
     def transform(self, data, args, kvargs):
         print("enter UDFSearchEmbedding success：", kvargs)
         search_description = kvargs["description"].decode("utf-8")
-        paths_json = kvargs["paths"].decode("utf-8")
+        pattern = kvargs["pattern"].decode("utf-8")
 
         search_key_words = LLMDao().provide_keywords(search_description)
         print("key_words:", search_key_words)
@@ -366,7 +374,7 @@ class UDFSearchEmbedding:
         with Encoder() as ec:
             search_embedding = ec.encode([search_key_words])[0]
 
-        similar_paths = MilvusDao(kvargs).search_similarity(search_embedding, paths_json)
+        similar_paths = MilvusDao(kvargs).search_similarity(search_embedding, pattern)
 
         return [["(path)"], ['BINARY']] + [
             [path.encode('utf-8')]

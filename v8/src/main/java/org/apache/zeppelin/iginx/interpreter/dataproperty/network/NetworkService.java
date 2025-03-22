@@ -29,6 +29,7 @@ public class NetworkService {
   private List<String[]> columnPath;
   private NetworkTreeNode root;
   private IginxDao iginx;
+  private final String pattern;
   private Map<String, Map<String, Relation>> relationMap = new ConcurrentHashMap<>();
 
   public NetworkService(
@@ -36,12 +37,14 @@ public class NetworkService {
       Boolean needRelation,
       String paragraphId,
       List<String[]> columnPath,
-      IginxDao iginx) {
+      IginxDao iginx,
+      String pattern) {
     this.needMerge = needMerge;
     this.needRelation = needRelation;
     this.paragraphId = paragraphId;
     this.columnPath = columnPath;
     this.iginx = iginx;
+    this.pattern = Objects.requireNonNull(pattern);
   }
 
   public String initNetwork(VelocityContext velocityContext) {
@@ -359,7 +362,7 @@ public class NetworkService {
       embeddingId2NetworkId.put(childNode.getEmbeddingId(), childNode.getNetworkId());
     }
 
-    List<String> paths = iginx.search(visiblePaths, description);
+    List<String> paths = iginx.search(pattern, description);
     ArrayNode pathsJson = MAPPER.createArrayNode();
     for (String path : paths) {
       String networkId = embeddingId2NetworkId.get(path);
