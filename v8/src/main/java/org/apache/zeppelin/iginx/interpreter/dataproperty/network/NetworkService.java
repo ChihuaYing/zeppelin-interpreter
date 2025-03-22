@@ -9,9 +9,12 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.google.common.collect.Multimap;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.velocity.VelocityContext;
 import org.apache.zeppelin.iginx.interpreter.dataproperty.IginxDao;
+import org.apache.zeppelin.iginx.interpreter.dataproperty.entry.ClusterNode;
 import org.apache.zeppelin.iginx.interpreter.dataproperty.entry.Relation;
+import org.apache.zeppelin.iginx.interpreter.dataproperty.entry.SearchedNode;
 import org.apache.zeppelin.iginx.util.VelocityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -151,20 +154,10 @@ public class NetworkService {
 
   // todo:数据量很大时，updateNodes会几乎遍历所有结点，比较耗时，后续考虑借鉴懒标记思想优化？
   private void mergeForest(NetworkTreeNode root) {
-    Set<String> nodesSet = new HashSet<>();
-    for (NetworkTreeNode childNode : root.getChildren().values()) {
-      nodesSet.add(childNode.getName());
-    }
-
-    if (nodesSet.size() < MERGE_MIN_SIZE) {
-      LOGGER.info("the size of the forest is too small");
-      return;
-    }
-
-    Multimap<String, String> groupingMap = iginx.getGroupingOf(nodesSet);
+    Multimap<ClusterNode, String> groupingMap = iginx.getGroupingOf(pattern, "merge");
 
     Map<String, List<NetworkTreeNode>> labelToNodesMap = new HashMap<>();
-    for (Map.Entry<String, Collection<String>> group : groupingMap.asMap().entrySet()) {
+    for (Map.Entry<ClusterNode, Collection<String>> group : groupingMap.asMap().entrySet()) {
       List<NetworkTreeNode> nodesToMerge = new ArrayList<>();
       for (String nodeName : group.getValue()) {
         NetworkTreeNode node = root.getChildren().get(nodeName);
@@ -173,7 +166,7 @@ public class NetworkService {
         }
         nodesToMerge.add(node);
       }
-      labelToNodesMap.put(group.getKey(), nodesToMerge);
+      labelToNodesMap.put(group.getKey().getPath(), nodesToMerge);
     }
 
     root.getChildren().clear();
@@ -269,9 +262,9 @@ public class NetworkService {
     JSONArray links = new JSONArray();
     for (Relation relation : addRelations) {
       JSONObject relationJson = new JSONObject();
-      relationJson.put("from", relation.getFrom());
-      relationJson.put("to", relation.getTo());
-      relationJson.put("relation", relation.getRelation());
+      relationJson.put("from", relation.getFromPath());
+      relationJson.put("to", relation.getToPath());
+      relationJson.put("relation", relation.getDescription());
       links.add(relationJson);
     }
     return links;
@@ -315,18 +308,20 @@ public class NetworkService {
       targetEmbeddingId2NetworkId.put(visibleNode.getEmbeddingId(), visibleNode.getNetworkId());
     }
 
-    List<Relation> addRelations = iginx.analyseMainRelation(sourcePaths, targetPaths);
+    List<Relation> addRelations =
+        iginx.analyseMainRelation(sourcePaths, targetPaths, "analyse_relation");
     List<Relation> relationsWithNetworkId = new ArrayList<>();
 
     for (Relation relation : addRelations) {
-      String sourceEmbeddingId = relation.getFrom();
-      String targetEmbeddingId = relation.getTo();
+      String sourceEmbeddingId = relation.getFromPath();
+      String targetEmbeddingId = relation.getToPath();
       double score = relation.getScore();
 
       String from = sourceEmbeddingId2NetworkId.get(sourceEmbeddingId);
       String to = targetEmbeddingId2NetworkId.get(targetEmbeddingId);
 
-      relationsWithNetworkId.add(new Relation(from, to, score, relation.getRelation()));
+      relationsWithNetworkId.add(
+          new Relation(from, to, score, relation.getKeywords(), relation.getDescription()));
     }
 
     return relationsWithNetworkId;
@@ -352,24 +347,23 @@ public class NetworkService {
   public String handleSearch(String description) {
     List<NetworkTreeNode> visibleNodes = getVisibleNodes();
 
-    List<String> visiblePaths = new ArrayList<>();
     Map<String, String> embeddingId2NetworkId = new HashMap<>();
     for (NetworkTreeNode childNode : visibleNodes) {
       if (childNode.isMergedNode()) {
         continue;
       }
-      visiblePaths.add(childNode.getEmbeddingId());
       embeddingId2NetworkId.put(childNode.getEmbeddingId(), childNode.getNetworkId());
     }
 
-    List<String> paths = iginx.search(pattern, description);
+    List<SearchedNode> paths = iginx.search(pattern, description, "search_embedding");
     ArrayNode pathsJson = MAPPER.createArrayNode();
-    for (String path : paths) {
+    for (SearchedNode pathWithScore : paths) {
+      String path = pathWithScore.getPath();
       String networkId = embeddingId2NetworkId.get(path);
-      if (networkId == null) {
-        throw new IllegalStateException("Node not found for embeddingId: " + path);
+      if (networkId != null) {
+        pathsJson.add(networkId);
       }
-      pathsJson.add(networkId);
+      // TODO: 添加不可见节点
     }
     return pathsJson.toString();
   }

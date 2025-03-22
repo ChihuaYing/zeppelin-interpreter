@@ -4,10 +4,7 @@ import lombok.NonNull;
 import lombok.Value;
 
 @Value
-public class Relation {
-  @NonNull String fromPath;
-  @NonNull String toPath;
+public class SearchedNode {
+  @NonNull String path;
   double score;
-  @NonNull String keywords;
-  @NonNull String description;
 }

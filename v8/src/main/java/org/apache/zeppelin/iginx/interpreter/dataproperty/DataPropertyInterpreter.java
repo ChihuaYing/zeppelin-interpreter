@@ -1,13 +1,16 @@
 package org.apache.zeppelin.iginx.interpreter.dataproperty;
 
+import cn.edu.tsinghua.iginx.session.Column;
 import cn.edu.tsinghua.iginx.session.Session;
-import cn.edu.tsinghua.iginx.utils.Pair;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Preconditions;
 import java.util.*;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.velocity.VelocityContext;
 import org.apache.zeppelin.iginx.interpreter.dataproperty.network.NetworkService;
+import org.apache.zeppelin.iginx.util.TableUtil;
 import org.apache.zeppelin.interpreter.InterpreterContext;
 import org.apache.zeppelin.interpreter.InterpreterResult;
 import org.slf4j.Logger;
@@ -70,22 +73,26 @@ public class DataPropertyInterpreter {
 
   private InterpreterResult displayDataPropertyGraph(
       InterpreterContext context, String[] args, boolean needMerge) {
-    String pattern = String.join(" ", args);
-    Pair<List<String[]>, String> pair = iginx.getPathOf(pattern);
-    List<String[]> paths = pair.getK();
-    String table = pair.getV();
+    String iginxPattern = String.join(" ", args);
+    List<Column> columns = iginx.getPathOf(iginxPattern);
+
+    InterpreterResult interpreterResult = new InterpreterResult(InterpreterResult.Code.SUCCESS);
+    String table = TableUtil.buildTableFromColumns(columns);
+    interpreterResult.add(InterpreterResult.Type.TABLE, table);
+
+    Pattern dotPattern = Pattern.compile("\\.");
+    List<String[]> paths =
+        columns.stream().map(Column::getPath).map(dotPattern::split).collect(Collectors.toList());
     NetworkService networkService =
-        new NetworkService(needMerge, true, context.getParagraphId(), paths, iginx, pattern);
+        new NetworkService(needMerge, true, context.getParagraphId(), paths, iginx, iginxPattern);
     networkMap.put(context.getParagraphId(), networkService);
 
     VelocityContext velocityContext = new VelocityContext();
     velocityContext.put("paragraphId", context.getParagraphId());
 
     String html = networkService.initNetwork(velocityContext);
-
-    InterpreterResult interpreterResult = new InterpreterResult(InterpreterResult.Code.SUCCESS);
     interpreterResult.add(InterpreterResult.Type.HTML, html);
-    interpreterResult.add(InterpreterResult.Type.TABLE, table);
+
     return interpreterResult;
   }
 
