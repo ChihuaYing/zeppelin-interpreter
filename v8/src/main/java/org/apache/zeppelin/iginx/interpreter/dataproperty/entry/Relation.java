@@ -8,6 +8,5 @@ public class Relation {
   @NonNull String fromPath;
   @NonNull String toPath;
   double score;
-  @NonNull String keywords;
   @NonNull String description;
 }

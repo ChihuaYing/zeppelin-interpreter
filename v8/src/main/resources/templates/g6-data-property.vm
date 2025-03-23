@@ -51,17 +51,13 @@
                         <div style="display: flex; align-items: center;">
                             <label for="${paragraphId}_relation_select" style="margin-right: 10px; width: 100px; text-align: right;"><strong>Relation UDF：</strong></label>
                             <select id="${paragraphId}_relation_select" style="padding: 5px; border: 1px solid #ccc; border-radius: 4px;">
-                                <option value="option1">UDF 1</option>
-                                <option value="option2">UDF 2</option>
-                                <option value="option3">UDF 3</option>
+                                <option value="analyse_relation">analyse_relation</option>
                             </select>
                         </div>
                         <div style="display: flex; align-items: center;">
                             <label for="${paragraphId}_search_select" style="margin-right: 10px; width: 100px; text-align: right;"><strong>Search UDF：</strong></label>
                             <select id="${paragraphId}_search_select" style="padding: 5px; border: 1px solid #ccc; border-radius: 4px;">
-                                <option value="option1">UDF 1</option>
-                                <option value="option2">UDF 2</option>
-                                <option value="option3">UDF 3</option>
+                                <option value="search_embedding">search_embedding</option>
                             </select>
                         </div>
                     </div>
@@ -76,7 +72,7 @@
                     </div>
                     <div style="display: flex; align-items: center; gap: 5px; margin-top: 10px;">
                         <label for="${paragraphId}_search_top_k_box" style="width: 100px; text-align: right;"><Strong>Top K: </Strong></label>
-                        <input type="text" id="${paragraphId}_search_top_k_box" style="width: 100px;" placeholder="10"/>
+                        <input type="text" id="${paragraphId}_search_top_k_box" style="width: 100px;" value="10"/>
                         <button style="visibility: hidden; width: 60px;" type="button" class="btn btn-default btn-xs"></button>
                     </div>
                     <div style="display: flex; align-items: center; gap: 5px; margin-top: 10px;">
@@ -86,13 +82,15 @@
                                 <thead>
                                 <tr>
                                     <th style="width: 50px; text-align: center;">No.</th>
-                                    <th style="width: 250px; text-align: center; white-space: nowrap;">Path</th>
+                                    <th style="width: 200px; text-align: center; white-space: nowrap;">Path</th>
+                                    <th style="width: 50px; text-align: center;">similarity</th>
                                 </tr>
                                 </thead>
                                 <tbody id="${paragraphId}_search_table_body">
                                 <tr>
                                     <td style="text-align: center;">1</td>
-                                    <td>rootId.*.path.*</td>
+                                    <td>*.path.*</td>
+                                    <td>0.88</td>
                                 </tr>
                                 </tbody>
                             </table>
@@ -132,8 +130,7 @@
                 const lastParagraph = notebook.paragraphs.at(-1);
 
                 if (lastParagraph.text) {
-                    alert('Please create a empty paragraph in last of notebook to execute interpreter');
-                    throw new Error('Please create a empty paragraph in last of notebook to execute interpreter');
+                    handleError('Please create a empty paragraph in last of notebook to execute interpreter');
                 }
                 const paragraphId = lastParagraph.id;
 
@@ -187,8 +184,7 @@
             _checkResponse(response) {
                 if (!response.ok) {
                     const msg = 'Status: ' + response.status + '. ' + response.statusText;
-                    alert(msg);
-                    throw new Error(msg);
+                    handleError(msg);
                 }
             }
         }
@@ -249,6 +245,7 @@
         const topRelations = JSON.parse(topRelationStr);
 
         const nodeMap = {};
+        let searchedNodes = [];
 
         // 转换数据为 G6 需要的格式
         function convertToTreeData(nodes, relations) {
@@ -315,18 +312,20 @@
         });
 
         const tooltip = document.getElementById('tooltip');
+        const nodeStyle = {};
 
         // 监听鼠标悬浮在结点上
         graph.on('node:mouseenter', (evt) => {
             const node = evt.item;
             const model = node.getModel();
+            nodeStyle.style = { ...model.style }
             graph.updateItem(node, {
                 style: {
                     stroke: '#d9d6d6',
                     lineWidth: 2,
                 },
             });
-            tooltip.innerText = "结点: " + model.id;
+            tooltip.innerText = "Node: " + model.id;
             tooltip.style.display = 'block';
             tooltip.style.left = "" + (evt.clientX) + "px";
             tooltip.style.top = "" + (evt.clientY) + "px";
@@ -335,12 +334,9 @@
         // 监听鼠标移出结点
         graph.on('node:mouseleave', (evt) => {
             const node = evt.item;
-            graph.updateItem(node, {
-                style: {
-                    stroke: '#8f8b8b',
-                    lineWidth: 1,
-                },
-            });
+            if (nodeStyle.style) {
+                graph.updateItem(node, { style: nodeStyle.style });
+            }
             tooltip.style.display = 'none';
         });
 
@@ -355,7 +351,7 @@
                         lineWidth: 2,
                     },
                 });
-                tooltip.innerText = model.label;
+                tooltip.innerText = model.label + "\nsimilarity is: " + model.score;
                 tooltip.style.display = 'block';
                 tooltip.style.left = "" + (evt.clientX) + "px";
                 tooltip.style.top = "" + (evt.clientY) + "px";
@@ -395,10 +391,8 @@
 
         // 弹出提示框函数
         function showFrequentClickAlert() {
-            console.log("showFrequentClickAlert");
-            // todo: 设置提示框，提示点击过于频繁
+            handleError("Your requests are too frequent");
             setTimeout(() => {
-                // todo: 去除提示框
             }, 1000);
         }
 
@@ -425,23 +419,25 @@
         }
 
         async function handleNodeClick(nodeId) {
-            // todo: 命令中添加上relation UDF的信息
             const executor = new IginxExecutor(window.location.protocol, window.location.host);
             console.debug('handleNodeClick:', nodeId);
-            const statement = '>data.property.expand ${paragraphId} ' + nodeId;
+            const selectedUDF = document.getElementById("${paragraphId}_relation_select").value;
+            const statement = '>data.property.expand ${paragraphId} ' + nodeId + ' UDF' + selectedUDF;
             const data = await executor.execute(statement);
             console.debug('handleNodeClick executeInterpreter result:', data);
             const resultJson = JSON.parse(data.msg[0].data);
             console.debug('handleNodeClick resultJson:', resultJson);
             await handleResult(resultJson, nodeId);
             await resetOverview();
+            if (resultJson.add.nodes) {
+                await refreshSearch(resultJson.add.nodes.map(node => node.id));
+            }
         }
 
         function handleResult(result, nodeId) {
             console.log("begin handleResult");
             // clearRelation();
             if (result && result.add) {
-                console.log("handle add");
                 const parent = nodeMap[nodeId];
                 // 处理 add 中的 nodes
                 if (result.add.nodes) {
@@ -466,6 +462,7 @@
                             source: link.from,
                             target: link.to,
                             label: link.relation,
+                            score: link.score,
                             style: {
                                 stroke: '#ff6666',
                                 lineWidth: 1,
@@ -495,29 +492,72 @@
             document.getElementById("${paragraphId}_relation_num").textContent = relationNum;
         }
 
+        function handleError(error) {
+            alert(error);
+            throw new Error(error);
+        }
+
         document.getElementById('${paragraphId}_search_button').onclick = async () => {
-            // todo: 命令中添加上search UDF 和 Top K的信息
             const executor = new IginxExecutor();
-            const result = await executor.execute('>data.property.search ${paragraphId} ' + document.getElementById('${paragraphId}_search_box').value);
-            const networkNodeIds = JSON.parse(result.msg[0].data);
-            console.log('networkNodeIds:', networkNodeIds);
+            const keyword = document.getElementById('${paragraphId}_search_box').value.trim();
+            if (keyword === "") {
+                handleError('Please enter a non-empty keyword');
+            }
+            const topK = Number(document.getElementById("${paragraphId}_search_top_k_box").value.trim());
+            if (!Number.isInteger(topK) || topK <= 0) {
+                handleError('Please enter an integer greater than 0');
+            }
+            const selectedUDF = document.getElementById("${paragraphId}_search_select").value;
+            const statement = '>data.property.search ${paragraphId} ' + topK + ' UDF' + selectedUDF + ' ' + keyword;
+            const result = await executor.execute(statement);
+            searchedNodes = JSON.parse(result.msg[0].data);
+            console.log('searchedNodes: ' + searchedNodes);
+            await handleResearch();
+            await refreshSearch(Object.keys(nodeMap));
+        };
+
+        function handleResearch() {
             let tableBody = document.getElementById("${paragraphId}_search_table_body");
             tableBody.innerHTML = "";
-            networkNodeIds.forEach((nodeId, index) => {
-                graph.updateItem(nodeId, {
-                    style: {
-                        fill: '#ffeb3b',
-                        stroke: '#fbc02d'
-                    }
-                });
+            searchedNodes.forEach((node, index) => {
+                // todo: 根据node.mergeLevel调整表格和结点。要维护一个searchedNodes数组，和一个parent数组
                 let row = tableBody.insertRow();
                 let cell1 = row.insertCell(0);
                 cell1.style.textAlign = "center";
                 cell1.textContent = index + 1;
+                let parts = node.id.split(".");
+                for (let i = 0; i < Math.min(node.mergeLevel, parts.length); i++) {
+                    parts[i] = `<span style="color: red;">` + parts[i]  + `</span>`;
+                }
+                parts.shift();
+                let formattedId = parts.join(".");
                 let cell2 = row.insertCell(1);
-                cell2.textContent = nodeId;
+                cell2.innerHTML = formattedId;
+                let cell3 = row.insertCell(2);
+                cell3.textContent = node.score;
             });
-        };
+        }
+
+        // 填充变色：表示该结点是searchedNode；边框变色：表示该结点是某searchedNode的父结点
+        function refreshSearch(ids) {
+            for (let i = 0; i < ids.length; i++) {
+                for (let j = 0; j < searchedNodes.length; j++) {
+                    if (ids[i] === searchedNodes[j].id) {
+                        graph.updateItem(ids[i], {
+                            style: {
+                                fill: '#d0aa4a'
+                            }
+                        });
+                    } else if (searchedNodes[j].id.startsWith(ids[i])) {
+                        graph.updateItem(ids[i], {
+                            style: {
+                                stroke: '#ffe500'
+                            }
+                        });
+                    }
+                }
+            }
+        }
 
         document.getElementById("${paragraphId}_sidebar").addEventListener("toggle", function () {
             const rightPanel = document.getElementById("${paragraphId}_rightPanel");

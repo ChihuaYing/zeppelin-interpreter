@@ -23,6 +23,7 @@ public class DataPropertyInterpreter {
 
   private final Map<String, NetworkService> networkMap = new HashMap<>();
   private static final String INTERNAL_STATEMENT_PREFIX = ">data.property";
+  private static final String UDF = "UDF";
 
   private final IginxDao iginx;
 
@@ -77,8 +78,6 @@ public class DataPropertyInterpreter {
     List<Column> columns = iginx.getPathOf(iginxPattern);
 
     InterpreterResult interpreterResult = new InterpreterResult(InterpreterResult.Code.SUCCESS);
-    String table = TableUtil.buildTableFromColumns(columns);
-    interpreterResult.add(InterpreterResult.Type.TABLE, table);
 
     Pattern dotPattern = Pattern.compile("\\.");
     List<String[]> paths =
@@ -92,33 +91,42 @@ public class DataPropertyInterpreter {
 
     String html = networkService.initNetwork(velocityContext);
     interpreterResult.add(InterpreterResult.Type.HTML, html);
+    String table = TableUtil.buildTableFromColumns(columns);
+    interpreterResult.add(InterpreterResult.Type.TABLE, table);
 
     return interpreterResult;
   }
 
   private InterpreterResult expandDataPropertyGraph(String[] args) {
     Preconditions.checkArgument(args.length >= 2, "Invalid number of arguments: " + args.length);
+    Preconditions.checkArgument(
+        args[args.length - 1].startsWith(UDF),
+        "Invalid ending of arguments: " + args[args.length - 1]);
     String paragraphId = args[0];
-    String nodeId = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
+    String nodeId = String.join(" ", Arrays.copyOfRange(args, 1, args.length - 1));
+    String function = args[args.length - 1].substring(UDF.length());
 
     NetworkService networkService = networkMap.get(paragraphId);
     Preconditions.checkNotNull(networkService, "Network service not found: " + paragraphId);
 
-    String msg = networkService.handleNodeClick(nodeId);
+    String msg = networkService.handleNodeClick(nodeId, function);
     return new InterpreterResult(InterpreterResult.Code.SUCCESS, InterpreterResult.Type.TEXT, msg);
   }
 
   private InterpreterResult searchDataProperty(String[] args) {
-    if (args.length < 2) {
-      return new InterpreterResult(InterpreterResult.Code.ERROR, "Empty search description");
-    }
+    Preconditions.checkArgument(
+        args.length >= 4 && Integer.parseInt(args[1]) > 0 && args[2].startsWith(UDF),
+        "Invalid arguments");
     String paragraphId = args[0];
-    String description = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
+    String topK = args[1];
+    String function = args[2].substring(UDF.length());
+    String description = String.join(" ", Arrays.copyOfRange(args, 3, args.length));
 
     NetworkService networkService = networkMap.get(paragraphId);
     Preconditions.checkNotNull(networkService, "Network service not found: " + paragraphId);
 
-    String msg = networkService.handleSearch(description);
+    String msg = networkService.handleSearch(description, topK, function);
+    LOGGER.info("msg is {}", msg);
     return new InterpreterResult(InterpreterResult.Code.SUCCESS, InterpreterResult.Type.TEXT, msg);
   }
 }
