@@ -80,11 +80,15 @@ if __name__ == "__main__":
     descriptor_result = descriptor.transform(descriptor_data, [], {})
     print(descriptor_result)
 
+    descriptor_result[0] = [ name[1:-1] for name in descriptor_result[0]]
+
     from  DefaultEncoder import UDFDefaultEncoder
     encoder = UDFDefaultEncoder(cache_path="embeddings")
     encoder_data = descriptor_result
     encoder_result = encoder.transform(encoder_data, [], {})
     print(encoder_result)
+
+    encoder_result[0] = [name[1:-1] for name in encoder_result[0]]
 
     inserter = UDFDefaultInserter(milvus_host="127.0.0.1")
     inserter_data = encoder_result

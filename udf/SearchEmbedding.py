@@ -15,7 +15,6 @@ from pymilvus.orm import utility
 from sentence_transformers import SentenceTransformer
 from sklearn.cluster import KMeans
 
-
 class LLMDao:
     def __init__(self):
         self.url = "https://open.bigmodel.cn/api/paas/v4/chat/completions"

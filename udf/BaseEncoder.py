@@ -1,11 +1,10 @@
 from abc import abstractmethod
 
 import numpy as np
-import numpy.typing as npt
 
 class UDFBaseEncoder:
     @abstractmethod
-    def encode(self, descriptions: list[str]) -> list[npt.NDArray]:
+    def encode(self, descriptions: list[str]) -> list[np.ndarray]:
         pass
 
     def transform(self, data, args, kvargs):
