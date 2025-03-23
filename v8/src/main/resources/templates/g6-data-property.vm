@@ -103,6 +103,12 @@
         <!-- 右侧面板 -->
         <div id="${paragraphId}_rightPanel" style="flex-grow: 1; padding: 10px; transition: width 0.3s;">
             <div id="${paragraphId}_single_container" class="data-property-container panel panel-default"></div>
+            <div style="margin-top: 15px; padding: 10px; border: 1px solid #ddd; background-color: #f8f9fa; border-radius: 5px;">
+                <strong>Notice：</strong>
+                <span style="color: #c86464;">&#9679;</span> : cluster node,
+                <span style="color: #d0aa4a;">&#9679;</span> : searched node,
+                <span style="display: inline-block; width: 6px; height: 6px; border: 2px solid goldenrod; border-radius: 50%;"></span> : parent node of searched node
+            </div>
         </div>
     </div>
 
@@ -268,29 +274,14 @@
                     label: node.name,
                     depth: node.depth,
                     children: [],
+                    style: node.merge === true ? { fill: '#c86464', stroke: '#8f8b8b'} : {fill: '#97c2fc', stroke: '#8f8b8b'},
                 };
                 parent.children.push(child);
                 nodeMap[node.id] = child;
             }
 
             // 添加额外关系
-            for (let i = 0; i < relations.length; i++) {
-                const relation = relations[i];
-                const source = nodeMap[relation.from];
-                const target = nodeMap[relation.to];
-                if (source && target) {
-                    source.children.push({
-                        id: relation.from + "->" + relation.to,
-                        label: relation.relation,
-                        depth: source.depth + 1,
-                        relation: true,
-                        style: {
-                            stroke: 'red',
-                            lineWidth: 2,
-                        },
-                    });
-                }
-            }
+            handleRelation(relations);
 
             return treeData;
         }
@@ -325,7 +316,7 @@
                     lineWidth: 2,
                 },
             });
-            tooltip.innerText = "Node: " + model.id;
+            tooltip.innerText = "Node: " + model.id.replace("rootId.", "");
             tooltip.style.display = 'block';
             tooltip.style.left = "" + (evt.clientX) + "px";
             tooltip.style.top = "" + (evt.clientY) + "px";
@@ -396,28 +387,6 @@
             }, 1000);
         }
 
-        // 修改节点的颜色根据深度设置
-        function getColorByDepth(depth) {
-            switch (depth) {
-                case 0:
-                    return '#97c2fc'; // 深度为0的颜色
-                case 1:
-                    return '#ffb6c1'; // 深度为1的颜色
-                case 2:
-                    return '#f9a825'; // 深度为2的颜色
-                case 3:
-                    return '#8bc34a'; // 深度为3的颜色
-                case 4:
-                    return '#ff8a65'; // 深度为4的颜色
-                case 5:
-                    return '#90a4ae'; // 深度为5的颜色
-                case 6:
-                    return '#ffeb3b'; // 深度为6的颜色
-                default:
-                    return '#ffffff'; // 默认颜色
-            }
-        }
-
         async function handleNodeClick(nodeId) {
             const executor = new IginxExecutor(window.location.protocol, window.location.host);
             console.debug('handleNodeClick:', nodeId);
@@ -447,6 +416,7 @@
                             label: node.name,
                             depth: node.depth,
                             children: [],
+                            style: node.merge ? { fill: '#c86464', stroke: '#8f8b8b'} : {fill: '#97c2fc', stroke: '#8f8b8b'},
                         };
                         parent.children.push(child);
                         nodeMap[node.id] = child;
@@ -457,33 +427,46 @@
 
                 // 处理 add 中的 links
                 if (result.add.links) {
-                    result.add.links.forEach(link => {
-                        const edgeConfig = {
-                            source: link.from,
-                            target: link.to,
-                            label: link.relation,
-                            score: link.score,
-                            style: {
-                                stroke: '#ff6666',
-                                lineWidth: 1,
-                                radius: 10,
-                            },
-                            labelCfg: {
-                                style: {
-                                    opacity: 0
-                                }
-                            }
-                        };
-                        if (nodeMap[link.from].depth === nodeMap[link.to].depth) {
-                            edgeConfig.shape = 'quadratic';
-                            edgeConfig.curveOffset = 150;
-                        }
-                        graph.addItem('edge', edgeConfig);
-                    });
+                    handleRelation(result.add.links);
                 }
                 graph.fitView();
             }
         }
+
+        function handleRelation(links) {
+            links.forEach((link, index) => {
+                const edgeConfig = {
+                    source: link.from,
+                    target: link.to,
+                    label: link.relation,
+                    score: link.score,
+                    style: {
+                        stroke: '#ff6666',
+                        lineWidth: 1,
+                        radius: 10,
+                    },
+                    labelCfg: {
+                        style: {
+                            opacity: 0
+                        }
+                    }
+                };
+                if (nodeMap[link.from].depth === nodeMap[link.to].depth) {
+                    edgeConfig.shape = 'quadratic';
+
+                    const sourceNode = graph.findById(link.from).getModel();
+                    const targetNode = graph.findById(link.to).getModel();
+                    const dx = targetNode.x - sourceNode.x;
+                    const dy = targetNode.y - sourceNode.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    edgeConfig.curveOffset = Math.max(50, Math.min(distance * 0.3, 300)) *  (index % 2 === 0 ? 1 : -1);
+                    console.debug(link.from + " - " + link.to + " - edgeConfig.curveOffset is: " + edgeConfig.curveOffset);
+                    // edgeConfig.curveOffset = 150;
+                }
+                graph.addItem('edge', edgeConfig);
+            });
+        }
+
 
         function resetOverview() {
             const nodeNum = graph.getNodes().length;
@@ -520,7 +503,6 @@
             let tableBody = document.getElementById("${paragraphId}_search_table_body");
             tableBody.innerHTML = "";
             searchedNodes.forEach((node, index) => {
-                // todo: 根据node.mergeLevel调整表格和结点。要维护一个searchedNodes数组，和一个parent数组
                 let row = tableBody.insertRow();
                 let cell1 = row.insertCell(0);
                 cell1.style.textAlign = "center";

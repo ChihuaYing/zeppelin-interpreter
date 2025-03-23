@@ -3,7 +3,6 @@ package org.apache.zeppelin.iginx.interpreter.dataproperty.network;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
-import com.alibaba.fastjson2.filter.PropertyFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Multimap;
 import java.util.*;
@@ -55,19 +54,8 @@ public class NetworkService {
       mergeForest(root);
       LOGGER.info("after merge, the size is：{}", root.getChildren().size());
     }
-    List<NetworkTreeNode> nodeList = new ArrayList<>();
-    nodeList.add(root);
-    root.setExpanded(true);
-    root.setShown(true);
-    for (NetworkTreeNode childNode : root.getChildren().values()) {
-      childNode.setShown(true);
-      nodeList.add(childNode);
-    }
-    PropertyFilter filter =
-        (Object object, String name, Object value) -> {
-          return "id".equals(name) || "name".equals(name) || "depth".equals(name);
-        };
-    String nodeString = JSON.toJSONString(nodeList, filter).replace("'", "\\'");
+    JSONArray nodes = getNodesData(root);
+    String nodeString = nodes.toJSONString().replace("'", "\\'");
     LOGGER.info("the nodeString is {}", nodeString);
 
     String relationString = "";
@@ -224,18 +212,32 @@ public class NetworkService {
       List<Relation> addRelations = calculateNodeRelation(node, function);
       links = getRelationLinks(addRelations);
     }
-
-    for (NetworkTreeNode child : node.getChildren().values()) {
-      child.setShown(true);
-      JSONObject nodeData = new JSONObject();
-      nodeData.put("id", child.getNetworkId());
-      nodeData.put("name", child.getName());
-      nodeData.put("depth", child.getDepth());
-      nodes.add(nodeData);
-    }
-
+    nodes = getNodesData(node);
     addMap.put("nodes", nodes);
     addMap.put("links", links);
+  }
+
+  private JSONArray getNodesData(NetworkTreeNode node) {
+    JSONArray nodes = new JSONArray();
+    if (node == root) {
+      node.setShown(true);
+      node.setExpanded(true);
+      nodes.add(createNodeData(node));
+    }
+    for (NetworkTreeNode childNode : node.getChildren().values()) {
+      childNode.setShown(true);
+      nodes.add(createNodeData(childNode));
+    }
+    return nodes;
+  }
+
+  private JSONObject createNodeData(NetworkTreeNode node) {
+    JSONObject nodeData = new JSONObject();
+    nodeData.put("id", node.getNetworkId());
+    nodeData.put("name", node.getName());
+    nodeData.put("depth", node.getDepth());
+    nodeData.put("merge", node.isMergedNode());
+    return nodeData;
   }
 
   private JSONArray getRelationLinks(List<Relation> addRelations) {
