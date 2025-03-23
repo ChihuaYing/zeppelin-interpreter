@@ -7,6 +7,7 @@ import com.google.common.base.Preconditions;
 import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.velocity.VelocityContext;
 import org.apache.zeppelin.iginx.interpreter.dataproperty.network.NetworkService;
@@ -75,6 +76,7 @@ public class DataPropertyInterpreter {
   private InterpreterResult displayDataPropertyGraph(
       InterpreterContext context, String[] args, boolean needMerge) {
     String iginxPattern = String.join(" ", args);
+    iginxPattern = StringUtils.isEmpty(iginxPattern) ? "*" : iginxPattern;
     List<Column> columns = iginx.getPathOf(iginxPattern);
 
     InterpreterResult interpreterResult = new InterpreterResult(InterpreterResult.Code.SUCCESS);

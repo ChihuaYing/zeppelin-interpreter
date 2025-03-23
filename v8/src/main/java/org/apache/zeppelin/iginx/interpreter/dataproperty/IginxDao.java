@@ -5,7 +5,6 @@ import cn.edu.tsinghua.iginx.session.Column;
 import cn.edu.tsinghua.iginx.session.Session;
 import cn.edu.tsinghua.iginx.session.SessionExecuteSqlResult;
 import cn.edu.tsinghua.iginx.thrift.DataType;
-import cn.edu.tsinghua.iginx.utils.FormatUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.google.common.base.Preconditions;
@@ -14,8 +13,8 @@ import com.google.common.collect.Multimap;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.zeppelin.iginx.interpreter.dataproperty.entry.ClusterNode;
 import org.apache.zeppelin.iginx.interpreter.dataproperty.entry.Relation;
 import org.apache.zeppelin.iginx.interpreter.dataproperty.entry.SearchedNode;
 
@@ -33,7 +32,7 @@ public class IginxDao {
   }
 
   public List<Column> getPathOf(String iginxPattern) {
-    Objects.requireNonNull(iginxPattern);
+    Preconditions.checkArgument(StringUtils.isNotBlank(iginxPattern));
 
     String sql = String.format("select path, type from (show columns %s);", iginxPattern);
     List<List<Object>> values = executeSql(sql);
@@ -49,53 +48,23 @@ public class IginxDao {
     return columns;
   }
 
-  public Multimap<String, String> getGroupingOf(Set<String> nodes) {
-    // 使用 jackson 手动构建 JSON 字符串
-    ArrayNode arrayNode = MAPPER.createArrayNode();
-    for (String node : nodes) {
-      arrayNode.add(node);
-    }
-    String nodesJson = arrayNode.toString();
-    //  public Multimap<ClusterNode, String> getGroupingOf(String iginxPattern, String function) {
-    //    Objects.requireNonNull(iginxPattern);
-    //    Objects.requireNonNull(function);
+  public Multimap<ClusterNode, String> getGroupingOf(String iginxPattern, String function) {
+    Preconditions.checkArgument(StringUtils.isNotBlank(iginxPattern));
+    Preconditions.checkArgument(StringUtils.isNotBlank(function));
 
     String sql =
-        "select `merge(name)` as name, `merge(cluster)` as grouping from (select merge(*, paths='"
-            + nodesJson
-            + "', host='"
-            + milvusHost
-            + "', port='"
-            + milvusPort
-            + "') from (show columns ###));";
-    List<List<String>> queryList = getQueryList(sql);
+        String.format(
+            "select `%s(path)`, `%<s(cluster)`"
+                + " from (select %<s(*, pattern='%s', host='%s', port='%d') from (show columns ###));",
+            function, iginxPattern, milvusHost, milvusPort);
 
-    Multimap<String, String> groupingMap = HashMultimap.create();
-    List<String> header = queryList.get(0);
-    Preconditions.checkArgument(header.size() == 2, "Invalid header: " + header);
-    Preconditions.checkArgument(header.get(0).equals("name"), "Invalid header: " + header);
-    Preconditions.checkArgument(header.get(1).equals("grouping"), "Invalid header: " + header);
-
-    for (int i = 1; i < queryList.size(); i++) {
-      List<String> row = queryList.get(i);
-      String name = row.get(0);
-      String cluster = row.get(1);
-      groupingMap.put(cluster, name);
+    List<List<Object>> values = executeSql(sql);
+    Multimap<ClusterNode, String> groupingMap = HashMultimap.create();
+    for (List<Object> row : values) {
+      String path = new String((byte[]) row.get(0), StandardCharsets.UTF_8);
+      String clusterKey = new String((byte[]) row.get(1), StandardCharsets.UTF_8);
+      groupingMap.put(new ClusterNode(clusterKey, "<description example>: " + clusterKey), path);
     }
-    //    String sql =
-    //        String.format(
-    //            "select `%s(path)`, `%<s(cluster)`"
-    //                + " from (select %<s(*, pattern='%s', host='%s', port='%d') from (show columns
-    // ###));",
-    //            function, iginxPattern, milvusHost, milvusPort);
-    //
-    //    List<List<Object>> values = executeSql(sql);
-    //    Multimap<ClusterNode, String> groupingMap = HashMultimap.create();
-    //    for (List<Object> row : values) {
-    //      String path = new String((byte[]) row.get(0), StandardCharsets.UTF_8);
-    //      String clusterKey = new String((byte[]) row.get(1), StandardCharsets.UTF_8);
-    //      groupingMap.put(new ClusterNode(clusterKey, clusterKey), path);
-    //    }
 
     return groupingMap;
   }
@@ -104,9 +73,10 @@ public class IginxDao {
       String iginxPattern, String description, String topK, String function) {
     // todo: 把 topK 放到 UDF 中
     // todo: 目前 score 值是直接放进去的，后续改为从 UDF 中获得
-    Objects.requireNonNull(iginxPattern);
-    Objects.requireNonNull(description);
-    Objects.requireNonNull(function);
+    Preconditions.checkArgument(StringUtils.isNotBlank(iginxPattern));
+    Preconditions.checkArgument(StringUtils.isNotBlank(topK));
+    Preconditions.checkArgument(StringUtils.isNotBlank(description));
+    Preconditions.checkArgument(StringUtils.isNotBlank(function));
 
     String sql =
         String.format(
@@ -126,7 +96,9 @@ public class IginxDao {
 
   public List<Relation> analyseMainRelation(
       List<String> sourcePaths, List<String> targetPaths, String function) {
-    Objects.requireNonNull(function);
+    Preconditions.checkNotNull(sourcePaths);
+    Preconditions.checkNotNull(targetPaths);
+    Preconditions.checkArgument(StringUtils.isNotBlank(function));
 
     ArrayNode sourceArrayNode = MAPPER.createArrayNode();
     for (String sourcePath : sourcePaths) {
@@ -167,19 +139,5 @@ public class IginxDao {
       throw new RuntimeException("Failed to execute SQL: " + sql, e);
     }
     return sqlResult.getValues();
-  }
-
-  private List<List<String>> getQueryList(String sql) {
-    List<List<String>> queryList = null;
-    try {
-      SessionExecuteSqlResult sqlResult = session.executeSql(sql);
-      queryList = sqlResult.getResultInList(false, FormatUtils.DEFAULT_TIME_FORMAT, "");
-    } catch (Exception e) {
-      throw new IllegalStateException("encounter error when executing sql statement", e);
-    }
-    if (queryList == null || queryList.size() <= 1) {
-      throw new IllegalStateException("Invalid queryList or insufficient data, the sql is " + sql);
-    }
-    return queryList;
   }
 }

@@ -169,13 +169,12 @@ class MilvusDao:
         print("Loading milvus collection")
         self.collection.load()
 
-    def fetch_by_path(self, paths_json: str):
-        print("fetching by path")
-        paths_list = json.loads(paths_json)
-        expr = f"path in {paths_list}"
+    def fetch_first_level(self, pattern: str):
+        print(f"fetching first level with pattern: {pattern}")
+        sub_pattern = pattern.split('.')[0].replace('*', '%')
         entities = self.collection.query(
             output_fields=["path", "embedding", "description"],
-            expr=expr
+            expr=f"path like '{sub_pattern}' and not path like '%.%'"
         )
         return [(entity["path"], entity["embedding"], entity["description"]) for entity in entities]
 
@@ -253,9 +252,9 @@ class UDFMerge:
 
     def transform(self, data, args, kvargs):
         print("enter transform Merge success:", kvargs)
-        paths_json = kvargs["paths"].decode("utf-8")
+        pattern = kvargs["pattern"].decode("utf-8")
 
-        paths_result = MilvusDao(kvargs).fetch_by_path(paths_json)
+        paths_result = MilvusDao(kvargs).fetch_first_level(pattern)
         nodes = [Node(path, description, embedding) for path, embedding, description in paths_result]
         nested_clustered_nodes = Aggregator().build_cluster(nodes, 5)
 

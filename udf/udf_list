@@ -1,4 +1,4 @@
-UDSF,store_embedding,UDFStoreEmbedding,EmbeddingUtils.py
-UDSF,search_embedding,UDFSearchEmbedding,EmbeddingUtils.py
-UDSF,analyse_relation,UDFAnalyseRelation,EmbeddingUtils.py
-UDSF,merge,UDFMerge,EmbeddingUtils.py
+UDSF,store_embedding,UDFStoreEmbedding,StoreEmbedding.py
+UDSF,search_embedding,UDFSearchEmbedding,SearchEmbedding.py
+UDSF,analyse_relation,UDFAnalyseRelation,AnalyseRelation.py
+UDSF,merge,UDFMerge,Merge.py

@@ -7,9 +7,8 @@ from pymilvus import connections, Collection, FieldSchema, DataType, CollectionS
 from pymilvus.orm import utility
 from sentence_transformers import SentenceTransformer
 
-
 class Encoder:
-    def __init__(self, cache_path="embedding_cache.db"):
+    def __init__(self, cache_path='cache/embeddings'):
         print("Initializing Sentence Transformer")
         self.encoder = SentenceTransformer("paraphrase-mpnet-base-v2")
         self.batch_size = 128
@@ -152,8 +151,6 @@ class UDFStoreEmbedding:
         description_each_path = self._build_descriptions(paths)
         paths_contain_inner_node = list(description_each_path.keys())
         descriptions = list(description_each_path.values())
-        # with Encoder() as ec:
-        #     embeddings = ec.encode(descriptions)
         ec = Encoder()  # 直接创建实例
         embeddings = ec.encode(descriptions)
 

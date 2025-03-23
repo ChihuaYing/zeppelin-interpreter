@@ -9,6 +9,7 @@ import com.google.common.collect.Multimap;
 import java.util.*;
 import org.apache.velocity.VelocityContext;
 import org.apache.zeppelin.iginx.interpreter.dataproperty.IginxDao;
+import org.apache.zeppelin.iginx.interpreter.dataproperty.entry.ClusterNode;
 import org.apache.zeppelin.iginx.interpreter.dataproperty.entry.Relation;
 import org.apache.zeppelin.iginx.interpreter.dataproperty.entry.SearchedNode;
 import org.apache.zeppelin.iginx.util.VelocityUtil;
@@ -149,22 +150,15 @@ public class NetworkService {
 
   // todo:数据量很大时，updateNodes会几乎遍历所有结点，比较耗时，后续考虑借鉴懒标记思想优化？
   private void mergeForest(NetworkTreeNode root) {
-    Set<String> nodesSet = new HashSet<>();
-    for (NetworkTreeNode childNode : root.getChildren().values()) {
-      nodesSet.add(childNode.getName());
-    }
+    Multimap<ClusterNode, String> groupingMap = iginx.getGroupingOf(pattern, "merge");
 
-    if (nodesSet.size() < MERGE_MIN_SIZE) {
-      LOGGER.info("the size of the forest is too small");
+    if (groupingMap.values().size() < MERGE_MIN_SIZE) {
+      LOGGER.info("the size of the groupingMap is too small");
       return;
     }
 
-    Multimap<String, String> groupingMap = iginx.getGroupingOf(nodesSet);
-    //    Multimap<ClusterNode, String> groupingMap = iginx.getGroupingOf(pattern, "merge");
-
     Map<String, List<NetworkTreeNode>> labelToNodesMap = new HashMap<>();
-    //    for (Map.Entry<String, Collection<String>> group : groupingMap.asMap().entrySet())
-    for (Map.Entry<String, Collection<String>> group : groupingMap.asMap().entrySet()) {
+    for (Map.Entry<ClusterNode, Collection<String>> group : groupingMap.asMap().entrySet()) {
       List<NetworkTreeNode> nodesToMerge = new ArrayList<>();
       for (String nodeName : group.getValue()) {
         NetworkTreeNode node = root.getChildren().get(nodeName);
@@ -173,8 +167,7 @@ public class NetworkService {
         }
         nodesToMerge.add(node);
       }
-      labelToNodesMap.put(group.getKey(), nodesToMerge);
-      //      labelToNodesMap.put(group.getKey().getPath(), nodesToMerge);
+      labelToNodesMap.put(group.getKey().getPath(), nodesToMerge);
     }
 
     root.getChildren().clear();
