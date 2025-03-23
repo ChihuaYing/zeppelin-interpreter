@@ -13,7 +13,7 @@
     }
 
     .data-property-tooltip {
-        position: absolute;
+        position: fixed;
         background: rgba(0, 0, 0, 0.7);
         color: white;
         padding: 5px 10px;
@@ -105,8 +105,8 @@
             <div id="${paragraphId}_single_container" class="data-property-container panel panel-default"></div>
             <div style="margin-top: 15px; padding: 10px; border: 1px solid #ddd; background-color: #f8f9fa; border-radius: 5px;">
                 <strong>Notice：</strong>
-                <span style="color: #c86464;">&#9679;</span> : cluster node,
-                <span style="color: #d0aa4a;">&#9679;</span> : searched node,
+                <span style="color: #c86464;">&#9679;</span> : cluster node;<span>&nbsp;&nbsp;&nbsp;</span>
+                <span style="color: #d0aa4a;">&#9679;</span> : searched node;<span>&nbsp;&nbsp;&nbsp;</span>
                 <span style="display: inline-block; width: 6px; height: 6px; border: 2px solid goldenrod; border-radius: 50%;"></span> : parent node of searched node
             </div>
         </div>
@@ -274,7 +274,8 @@
                     label: node.name,
                     depth: node.depth,
                     children: [],
-                    style: node.merge === true ? { fill: '#c86464', stroke: '#8f8b8b'} : {fill: '#97c2fc', stroke: '#8f8b8b'},
+                    style: node.merge === true ? { fill: '#c86464', stroke: '#8f8b8b', lineWidth: 1} : {fill: '#97c2fc', stroke: '#8f8b8b', lineWidth: 1},
+                    description: node.description,
                 };
                 parent.children.push(child);
                 nodeMap[node.id] = child;
@@ -317,6 +318,9 @@
                 },
             });
             tooltip.innerText = "Node: " + model.id.replace("rootId.", "");
+            if (model.description) {
+                tooltip.innerText = tooltip.innerText + "\nDescription: " + model.description;
+            }
             tooltip.style.display = 'block';
             tooltip.style.left = "" + (evt.clientX) + "px";
             tooltip.style.top = "" + (evt.clientY) + "px";
@@ -416,7 +420,8 @@
                             label: node.name,
                             depth: node.depth,
                             children: [],
-                            style: node.merge ? { fill: '#c86464', stroke: '#8f8b8b'} : {fill: '#97c2fc', stroke: '#8f8b8b'},
+                            style: node.merge ? { fill: '#c86464', stroke: '#8f8b8b', lineWidth: 1} : {fill: '#97c2fc', stroke: '#8f8b8b', lineWidth: 1},
+                            description: node.description,
                         };
                         parent.children.push(child);
                         nodeMap[node.id] = child;
@@ -452,16 +457,22 @@
                     }
                 };
                 if (nodeMap[link.from].depth === nodeMap[link.to].depth) {
-                    edgeConfig.shape = 'quadratic';
-
                     const sourceNode = graph.findById(link.from).getModel();
                     const targetNode = graph.findById(link.to).getModel();
-                    const dx = targetNode.x - sourceNode.x;
                     const dy = targetNode.y - sourceNode.y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-                    edgeConfig.curveOffset = Math.max(50, Math.min(distance * 0.3, 300)) *  (index % 2 === 0 ? 1 : -1);
-                    console.debug(link.from + " - " + link.to + " - edgeConfig.curveOffset is: " + edgeConfig.curveOffset);
-                    // edgeConfig.curveOffset = 150;
+                    const distance = Math.abs(dy);
+                    if (distance < 100) {
+                        edgeConfig.shape = 'quadratic';
+                        edgeConfig.curveOffset = Math.max(50, Math.min(distance * 0.5, 300)) *  (index % 2 === 0 ? 1 : -1);
+                        // edgeConfig.curveOffset = 150;
+                    } else {
+                        edgeConfig.shape = 'polyline';
+                        edgeConfig.controlPoints = [
+                            { x: sourceNode.x + dy/5, y: sourceNode.y + dy/5 },
+                            { x: sourceNode.x + dy/4, y: targetNode.y - dy/2 },
+                            { x: sourceNode.x + dy/5, y: targetNode.y - dy/5 },
+                        ];
+                    }
                 }
                 graph.addItem('edge', edgeConfig);
             });

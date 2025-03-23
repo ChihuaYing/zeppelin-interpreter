@@ -60,7 +60,6 @@ public class NetworkService {
 
     String relationString = "";
     if (needRelation && !needMerge) {
-      //      addEmbedding(root);
       List<Relation> relationList = calculateNodeRelation(root, DEFAULT_RELATION_FUNCTION);
       relationString = JSON.toJSONString(relationList);
       LOGGER.info("the relationString is {}", relationString);

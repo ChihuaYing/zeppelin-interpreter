@@ -180,7 +180,7 @@ class MilvusDao:
         print("Searching similar embeddings")
 
         milvus_pattern = pattern.replace("*", "%")
-        expr = 'path like "' + milvus_pattern + "'"
+        expr = 'path like "' + milvus_pattern + '"'
         entities = self.collection.search(
             data=[embedding],
             anns_field="embedding",
