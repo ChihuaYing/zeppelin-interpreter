@@ -1,4 +1,6 @@
-UDSF,store_embedding,UDFStoreEmbedding,StoreEmbedding.py
 UDSF,search_embedding,UDFSearchEmbedding,SearchEmbedding.py
 UDSF,analyse_relation,UDFAnalyseRelation,AnalyseRelation.py
 UDSF,merge,UDFMerge,Merge.py
+UDSF,default_describe,UDFDefaultDescriptor,DefaultDescriptor.py
+UDSF,default_encode,UDFDefaultEncoder,DefaultEncoder.py
+UDSF,default_insert,UDFDefaultInserter,DefaultInserter.py

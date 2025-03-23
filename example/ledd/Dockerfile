@@ -37,7 +37,28 @@ taskList:
   - taskType: "iginx"
     timeout: 10000000
     sqlList:
-      - "select store_embedding(*, host='milvus', port='19530') from (show columns);"
+      - |
+        SELECT default_insert(*)
+        FROM (
+            SELECT
+                `default_encode(path)` as path,
+                `default_encode(type)` as type,
+                `default_encode(description)` as description,
+                `default_encode(embedding)` as embedding
+            FROM(
+                SELECT default_encode(*)
+                FROM (
+                    SELECT
+                        `default_describe(path)` as path,
+                        `default_describe(type)` as type,
+                        `default_describe(description)` as description
+                    FROM (
+                        SELECT default_describe(*)
+                        FROM (show columns)
+                    )
+                )
+            )
+        );
 schedule: "every 360000 second"
 exportType: "none"
 EOF

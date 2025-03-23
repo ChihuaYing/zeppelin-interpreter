@@ -68,7 +68,12 @@ services:
       - ../../udf/AnalyseRelation.py:/app/udf_funcs/python_scripts/AnalyseRelation.py
       - ../../udf/Merge.py:/app/udf_funcs/python_scripts/Merge.py
       - ../../udf/SearchEmbedding.py:/app/udf_funcs/python_scripts/SearchEmbedding.py
-      - ../../udf/StoreEmbedding.py:/app/udf_funcs/python_scripts/StoreEmbedding.py
+      - ../../udf/BaseDescriptor.py:/app/udf_funcs/python_scripts/BaseDescriptor.py
+      - ../../udf/BaseEncoder.py:/app/udf_funcs/python_scripts/BaseEncoder.py
+      - ../../udf/BaseInserter.py:/app/udf_funcs/python_scripts/BaseInserter.py
+      - ../../udf/DefaultDescriptor.py:/app/udf_funcs/python_scripts/DefaultDescriptor.py
+      - ../../udf/DefaultEncoder.py:/app/udf_funcs/python_scripts/DefaultEncoder.py
+      - ../../udf/DefaultInserter.py:/app/udf_funcs/python_scripts/DefaultInserter.py
     environment:
       zookeeperConnectionString: zk:2181
       storageEngineList: 192.168.0.7#6667#iotdb12#username=root#password=root#has_data=false#is_read_only=false
