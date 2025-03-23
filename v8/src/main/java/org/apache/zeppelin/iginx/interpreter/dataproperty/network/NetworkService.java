@@ -59,7 +59,7 @@ public class NetworkService {
     LOGGER.info("the nodeString is {}", nodeString);
 
     String relationString = "";
-    if (needRelation) {
+    if (needRelation && !needMerge) {
       //      addEmbedding(root);
       List<Relation> relationList = calculateNodeRelation(root, DEFAULT_RELATION_FUNCTION);
       relationString = JSON.toJSONString(relationList);
@@ -138,12 +138,11 @@ public class NetworkService {
 
   // todo:数据量很大时，updateNodes会几乎遍历所有结点，比较耗时，后续考虑借鉴懒标记思想优化？
   private void mergeForest(NetworkTreeNode root) {
-    Multimap<ClusterNode, String> groupingMap = iginx.getGroupingOf(pattern, "merge");
-
-    if (groupingMap.values().size() < MERGE_MIN_SIZE) {
+    if (root.getChildren().size() < MERGE_MIN_SIZE) {
       LOGGER.info("the size of the groupingMap is too small");
       return;
     }
+    Multimap<ClusterNode, String> groupingMap = iginx.getGroupingOf(pattern, "merge");
 
     Map<String, List<NetworkTreeNode>> labelToNodesMap = new HashMap<>();
     for (Map.Entry<ClusterNode, Collection<String>> group : groupingMap.asMap().entrySet()) {

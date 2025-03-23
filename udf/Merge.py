@@ -130,7 +130,7 @@ class Encoder:
 
 class MilvusDao:
     def __init__(self, kvargs):
-        milvus_host = "localhost"
+        milvus_host = "127.0.0.1"
         milvus_port = 19530
         if kvargs.get("host"):
             milvus_host = kvargs["host"].decode("utf-8")
@@ -258,7 +258,7 @@ class UDFMerge:
         nodes = [Node(path, description, embedding) for path, embedding, description in paths_result]
         nested_clustered_nodes = Aggregator().build_cluster(nodes, 5)
 
-        results = [["(name)", "(cluster)"], ['BINARY', 'BINARY']]
+        results = [["(path)", "(cluster)"], ['BINARY', 'BINARY']]
         self._generate_result(nested_clustered_nodes, [], results)
         print("results:", results)
         return results

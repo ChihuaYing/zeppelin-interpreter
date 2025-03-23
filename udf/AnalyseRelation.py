@@ -165,7 +165,7 @@ class Encoder:
 
 class MilvusDao:
     def __init__(self, kvargs):
-        milvus_host = "localhost"
+        milvus_host = "127.0.0.1"
         milvus_port = 19530
         if kvargs.get("host"):
             milvus_host = kvargs["host"].decode("utf-8")
