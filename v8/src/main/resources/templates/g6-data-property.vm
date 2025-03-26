@@ -1,10 +1,9 @@
 <style>
     .data-property-container {
-        height: 80vh;
         width: 100%;
-        background-color: #f5f5f5;
         border: 1px solid #ddd;
         box-sizing: border-box;
+        border-radius: 5px;
     }
 
     .data-property-summary {
@@ -22,73 +21,137 @@
         pointer-events: none;
         font-size: 12px;
     }
+
+    .plan_box {
+        overflow: hidden;
+        overflow-x: auto;
+    }
+    .plan_box table {
+        border-spacing: 0;
+        width: 100%;
+    }
+    .plan_box table thead tr:nth-child(2n+1) {
+        background-color: #FAFAFA;
+    }
+    .plan_box table tr {
+        height: 20px;
+        font-size: 10px;
+        color: #666666;
+        line-height: 10px;
+        font-weight: 600;
+    }
+    .plan_box table tr:nth-child(2n) {
+        background-color: #FAFAFA;
+    }
+    .plan_box table .head {
+        font-size: 12px;
+        color: #666666;
+        line-height: 12px;
+        font-weight: 600;
+    }
 </style>
 
-<details open>
-    <summary class="data-property-summary">Data Property</summary>
-    <div style="display: flex; padding: 10px; gap: 10px;">
+##<details open>
+##    <summary class="data-property-summary">Data Property</summary>
+    <div style="display: flex; gap: 5px;">
         <!-- 左侧面板 -->
-        <details open id="${paragraphId}_sidebar" style="display: flex; flex-direction: row-reverse; transition: width 0.3s;">
-            <summary style="writing-mode: vertical-rl; text-align: center; padding: 10px; background: #6c757d; color: white; cursor: pointer; border-left: 1px solid #ccc;">
-                ☰ Hide Sidebar
-            </summary>
-            <div id="${paragraphId}_leftPanel" style="width: 300px; padding: 10px; border-right: 1px solid #ccc; background: #f8f9fa;">
-                <div style="border: 1px solid #ddd; padding: 10px; border-radius: 5px;">
-                    <h4><span style="color: #808080;">Title</span></h4>
-                    <div style="margin-bottom: 12px;"><span>description</span></div>
+        <div id="${paragraphId}_leftPanel" style="width: 400px; padding: 10px;">
+            <div style="border: 1px solid #ddd; padding: 10px; border-radius: 5px;">
+                <div style="color: black; font-size: 1.5rem;"><strong>SchemaPile</strong></div>
+                <div style="background-color: #6c757d; color: white; padding: 5px 10px; border-radius: 5px; font-size: 1.2rem; display: inline-block;">
+                    <strong>Overview</strong>
+                </div>
+                <div style="display: flex; flex-wrap: wrap;">
+                    <div style="width: calc(40% - 5px); margin-top: 5px;">
+                        <span style="color: #d3d3d3;">&#9679;</span><strong>&nbsp;Original Nodes: </strong><span id="${paragraphId}_original_node_num"></span>
+                    </div>
+                    <div style="width: calc(60% - 5px); margin-top: 5px;">
+                        <span style="display: inline-block; width: 5px; height: 2px; background-color: #a9a9a9;"></span><strong>&nbsp;Original Parent-Child Relations: </strong><span id="${paragraphId}_original_parent-child_relation_num"></span>
+                    </div>
+                    <div style="width: calc(40% - 5px); margin-top: 5px;">
+                        <span style="color: #2ecc71;">&#9679;</span><strong>&nbsp;Generated Nodes: </strong><span id="${paragraphId}_generated_node_num"></span>
+                    </div>
+                    <div style="width: calc(60% - 5px); margin-top: 5px;">
+                        <span style="display: inline-block; width: 5px; height: 2px; background-color: #dc3545;"></span><strong>&nbsp;Discovered Similarity Relations: </strong><span id="${paragraphId}_discovered_similarity_relation_num"></span>
+                    </div>
+                </div>
+                <hr style="margin: 5px 0;">
+
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 5px;">
                     <div style="background-color: #6c757d; color: white; padding: 5px 10px; border-radius: 5px; font-size: 1.2rem; display: inline-block;">
-                        Overview
+                        <strong>Relation</strong>
                     </div>
-                    <div style="display: flex; gap: 20px;">
-                        <div style="margin-top: 10px;"><strong>Nodes: </strong><span id="${paragraphId}_node_num"></span></div>
-                        <div style="margin-top: 10px;"><strong>Relations: </strong><span id="${paragraphId}_relation_num"></span></div>
+                    <div style="display: flex; align-items: center;">
+                        <select id="${paragraphId}_relation_select" style="padding: 5px; border: 1px solid #ccc; border-radius: 4px; margin-right: 5px">
+                            <option value="analyse_relation">analyse_relation</option>
+                        </select>
                     </div>
-                    <hr>
-                    <div style="background-color: #6c757d; color: white; padding: 5px 10px; border-radius: 5px; font-size: 1.2rem; display: inline-block;">
-                        Choose
-                    </div>
-                    <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;">
-                        <div style="display: flex; align-items: center;">
-                            <label for="${paragraphId}_relation_select" style="margin-right: 10px; width: 100px; text-align: right;"><strong>Relation UDF：</strong></label>
-                            <select id="${paragraphId}_relation_select" style="padding: 5px; border: 1px solid #ccc; border-radius: 4px;">
-                                <option value="analyse_relation">analyse_relation</option>
-                            </select>
-                        </div>
-                        <div style="display: flex; align-items: center;">
-                            <label for="${paragraphId}_search_select" style="margin-right: 10px; width: 100px; text-align: right;"><strong>Search UDF：</strong></label>
-                            <select id="${paragraphId}_search_select" style="padding: 5px; border: 1px solid #ccc; border-radius: 4px;">
-                                <option value="search_embedding">search_embedding</option>
-                            </select>
-                        </div>
-                    </div>
-                    <hr>
-                    <div style="background-color: #6c757d; color: white; padding: 5px 10px; border-radius: 5px; font-size: 1.2rem; display: inline-block;">
-                        Semantic Search
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 5px; margin-top: 10px;">
-                        <label for="${paragraphId}_search_box" style="width: 100px; text-align: right;"><Strong>Keyword: </Strong></label>
-                        <input type="text" id="${paragraphId}_search_box" style="width: 100px;" placeholder="Search..."/>
-                        <button id="${paragraphId}_search_button" style="width: 60px;" type="button" class="btn btn-default btn-xs">Search</button>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 5px; margin-top: 10px;">
-                        <label for="${paragraphId}_search_top_k_box" style="width: 100px; text-align: right;"><Strong>Top K: </Strong></label>
-                        <input type="text" id="${paragraphId}_search_top_k_box" style="width: 100px;" value="10"/>
-                        <button style="visibility: hidden; width: 60px;" type="button" class="btn btn-default btn-xs"></button>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 5px; margin-top: 10px;">
-                        <div style="width: 100%; max-width: 600px; max-height: 300px; overflow: auto; border: 1px solid #ddd;">
-                            <table id="${paragraphId}_search_table" border="1"
-                                   style="width: 300px; border-collapse: collapse; margin-top: 10px; table-layout: fixed;">
+                </div>
+                <div style="display: flex; align-items: center; gap: 5px; margin-top: 10px;">
+                    <div style="width: 100%; max-height: 100px; overflow: auto; border: 1px solid #ddd;">
+                        <div class="plan_box">
+                            <table style="width: max-content; table-layout: auto; border-collapse: separate; border-spacing: 5px;">
                                 <thead>
                                 <tr>
-                                    <th style="width: 50px; text-align: center;">No.</th>
-                                    <th style="width: 200px; text-align: center; white-space: nowrap;">Path</th>
-                                    <th style="width: 50px; text-align: center;">similarity</th>
+                                    <td class="head">#&nbsp;&nbsp;&nbsp;</td>
+                                    <td class="head">SourcePath&nbsp;&nbsp;&nbsp;</td>
+                                    <td class="head">TargetPath&nbsp;&nbsp;&nbsp;</td>
+                                    <td class="head">Relation&nbsp;&nbsp;&nbsp;</td>
+                                    <td class="head">Similarity&nbsp;&nbsp;&nbsp;</td>
                                 </tr>
+                                </thead>
+                                <tbody id="${paragraphId}_relation_table_body">
+                                <tr>
+                                    <td>1</td>
+                                    <td>*.path.*</td>
+                                    <td>*.path.*</td>
+                                    <td>relation</td>
+                                    <td>0.88</td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                ##                <div style="height: 180px; margin-top: 10px">
+##                    <div id="${paragraphId}_relation_container" class="data-property-container panel panel-default" style="height: 100%; "></div>
+##                </div>
+                <hr style="margin: 5px 0;">
+
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 5px;">
+                    <div style="background-color: #6c757d; color: white; padding: 5px 10px; border-radius: 5px; font-size: 1.2rem; display: inline-block;">
+                        <strong>Search</strong>
+                    </div>
+                    <div>
+                        <label for="${paragraphId}_search_top_k_box" style="width: 60px; text-align: right; vertical-align: middle;"><Strong>Top K: </Strong></label>
+                        <input type="text" id="${paragraphId}_search_top_k_box" style="width: 35px; vertical-align: middle;" value="10"/>
+                    </div>
+                    <div style="display: flex; align-items: center;">
+                        <select id="${paragraphId}_search_select" style="padding: 5px; border: 1px solid #ccc; border-radius: 4px; margin-right: 5px">
+                            <option value="semantic_search">semantic_search</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 10px;">
+                    <div>
+                        <label for="${paragraphId}_search_box" style="width: 80px; text-align: center; vertical-align: middle;"><Strong>Keyword: </Strong></label>
+                        <input type="text" id="${paragraphId}_search_box" style="width: 180px; vertical-align: middle;" placeholder="Search..."/>
+                    </div>
+                    <button id="${paragraphId}_search_button" style="width: 80px; margin-right: 5px; vertical-align: middle;" type="button" class="btn btn-default btn-xs">Search</button>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 5px; margin-top: 10px;">
+                    <div style="width: 100%; max-height: 100px; overflow: auto; border: 1px solid #ddd;">
+                        <div class="plan_box">
+                            <table style="border-spacing: 5px;">
+                                <thead>
+                                <td class="head" style="width: 10%;">#&nbsp;&nbsp;</td>
+                                <td class="head" style="width: 70%;">Path</td>
+                                <td class="head" style="width: 20%;">Similarity</td>
                                 </thead>
                                 <tbody id="${paragraphId}_search_table_body">
                                 <tr>
-                                    <td style="text-align: center;">1</td>
+                                    <td>1</td>
                                     <td>*.path.*</td>
                                     <td>0.88</td>
                                 </tr>
@@ -98,25 +161,29 @@
                     </div>
                 </div>
             </div>
-        </details>
+        </div>
 
         <!-- 右侧面板 -->
         <div id="${paragraphId}_rightPanel" style="flex-grow: 1; padding: 10px; transition: width 0.3s;">
-            <div id="${paragraphId}_single_container" class="data-property-container panel panel-default"></div>
-            <div style="margin-top: 15px; padding: 10px; border: 1px solid #ddd; background-color: #f8f9fa; border-radius: 5px;">
-                <strong>Notice：</strong>
-                <span style="color: #c86464;">&#9679;</span> : cluster node;<span>&nbsp;&nbsp;&nbsp;</span>
-                <span style="color: #d0aa4a;">&#9679;</span> : searched node;<span>&nbsp;&nbsp;&nbsp;</span>
-                <span style="display: inline-block; width: 6px; height: 6px; border: 2px solid goldenrod; border-radius: 50%;"></span> : parent node of searched node
+            <div style="padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                <strong>Legends: </strong>
+                <span style="color: #77c7da;">&#9679;</span> : virtual root node;<span>&nbsp;&nbsp;</span>
+                <span style="color: #2ecc71;">&#9679;</span> : generated node;<span>&nbsp;&nbsp;</span>
+                <span style="color: #ffc107;">&#9679;</span> : searched node;<span>&nbsp;&nbsp;</span>
+                <span style="display: inline-block; width: 6px; height: 6px; border: 2px solid #ffe500; border-radius: 50%;"></span> : parent node of searched node;&nbsp;&nbsp;
+                <span style="display: inline-block; width: 10px; height: 2px; background-color: #dc3545;"></span> : discovered similarity relation
+            </div>
+            <div id="${paragraphId}_single_container" class="data-property-container panel panel-default" style="margin-top: 10px; height: 80vh;">
+                <div style="position: absolute; top: 10px; left: 10px; padding: 8px; border-radius: 5px;">
+                    <button id="${paragraphId}_fitView_button" type="button" class="btn btn-default btn-xs" style="margin-right: 8px">fitView</button>
+                    <button id="${paragraphId}_zoomIn_button" type="button" class="btn btn-default btn-xs" style="margin-right: 8px">zoomIn</button>
+                    <button id="${paragraphId}_zoomOut_button" type="button" class="btn btn-default btn-xs" style="margin-right: 8px">zoomOut</button>
+                </div>
             </div>
         </div>
     </div>
-
-    <details>
-        <summary class="data-property-summary">Graph Configuration</summary>
-    </details>
     <div id="tooltip" class="data-property-tooltip"></div>
-</details>
+##</details>
 
 <script>
     (async function () {
@@ -177,7 +244,7 @@
                     method: 'POST',
                 });
                 const json = await response.json();
-                console.debug(json);
+                console.debug("json is: " + json);
                 return json.body;
             }
 
@@ -195,6 +262,17 @@
             }
         }
 
+        const virtualRootNodeFillColor = '#77c7da';
+        const originalNodesFillColor = '#d3d3d3';
+        const generatedNodesFillColor = '#2ecc71';
+        const suspendedNodesFillColor = '#efefef';
+        const searchedNodesFillColor = '#ffc107';
+        const allNodesStrokeColor = '#a9a9a9';
+        const originalParentChildEdgesStrokeColor = '#cccccc';
+        const strongSimilarityEdgesStrokeColor = '#dc3545';
+        const searchedParentNodesStrokeColor = '#ffe500';
+        const generatedParentChildEdgesStrokeColor = "#B0C4DE";
+
         const container = document.getElementById('${paragraphId}_single_container');
         const width = container.clientWidth;
         const height = container.clientHeight;
@@ -208,10 +286,10 @@
             },
             defaultNode: {
                 type: 'rect',
-                size: [10, 5],
+                size: [20, 10],
                 style: {
-                    fill: '#97c2fc',
-                    stroke: '#8f8b8b',
+                    fill: originalNodesFillColor,
+                    stroke: allNodesStrokeColor,
                     lineWidth: 1,
                 },
                 labelCfg: {
@@ -227,7 +305,7 @@
             defaultEdge: {
                 shape: 'cubic-horizontal',
                 style: {
-                    stroke: '#A3B1BF'
+                    stroke: originalParentChildEdgesStrokeColor,
                 }
             },
             layout: {
@@ -260,6 +338,7 @@
                 id: rootNode.id,
                 label: rootNode.name || "Data Asset",
                 depth: rootNode.depth,
+                style: { fill: virtualRootNodeFillColor, stroke: allNodesStrokeColor, lineWidth: 1},
                 children: [],
             };
 
@@ -271,10 +350,11 @@
                 const parent = nodeMap[node.parentId] || treeData;
                 const child = {
                     id: node.id,
-                    label: node.name,
+                    label: handleNodeLabel(node.name),
                     depth: node.depth,
                     children: [],
-                    style: node.merge === true ? { fill: '#c86464', stroke: '#8f8b8b', lineWidth: 1} : {fill: '#97c2fc', stroke: '#8f8b8b', lineWidth: 1},
+                    merge: node.merge,
+                    style: node.merge === true ? { fill: generatedNodesFillColor, stroke: allNodesStrokeColor, lineWidth: 1} : {fill: originalNodesFillColor, stroke: allNodesStrokeColor, lineWidth: 1},
                     description: node.description,
                 };
                 parent.children.push(child);
@@ -290,10 +370,10 @@
         const treeData = convertToTreeData(topNodes, topRelations);
         console.debug(treeData);
 
-        // 渲染图
         graph.data(treeData);
         graph.render();
-        graph.fitView();
+        // graph.fitView();
+        await updateGeneratedParentChildEdgeColor();
         await resetOverview();
 
         // 绑定单击事件
@@ -306,67 +386,71 @@
         const tooltip = document.getElementById('tooltip');
         const nodeStyle = {};
 
-        // 监听鼠标悬浮在结点上
-        graph.on('node:mouseenter', (evt) => {
-            const node = evt.item;
-            const model = node.getModel();
-            nodeStyle.style = { ...model.style }
-            graph.updateItem(node, {
-                style: {
-                    stroke: '#d9d6d6',
-                    lineWidth: 2,
-                },
-            });
-            tooltip.innerText = "Node: " + model.id.replace("rootId.", "");
-            if (model.description) {
-                tooltip.innerText = tooltip.innerText + "\nDescription: " + model.description;
-            }
-            tooltip.style.display = 'block';
-            tooltip.style.left = "" + (evt.clientX) + "px";
-            tooltip.style.top = "" + (evt.clientY) + "px";
-        });
+        await addToolTipInteractionForGraph(graph);
 
-        // 监听鼠标移出结点
-        graph.on('node:mouseleave', (evt) => {
-            const node = evt.item;
-            if (nodeStyle.style) {
-                graph.updateItem(node, { style: nodeStyle.style });
-            }
-            tooltip.style.display = 'none';
-        });
-
-        // 监听鼠标悬浮在边上
-        graph.on('edge:mouseenter', (evt) => {
-            const { item } = evt;
-            const model = item.getModel();
-            if (model.label) {
-                graph.updateItem(item, {
+        function addToolTipInteractionForGraph(g) {
+            // 监听鼠标悬浮在结点上
+            g.on('node:mouseenter', (evt) => {
+                const node = evt.item;
+                const model = node.getModel();
+                nodeStyle.style = { ...model.style }
+                g.updateItem(node, {
                     style: {
-                        stroke: 'red',
+                        stroke: suspendedNodesFillColor,
                         lineWidth: 2,
                     },
                 });
-                tooltip.innerText = model.label + "\nsimilarity is: " + model.score;
+                tooltip.innerText = "Node: " + model.id.replace("rootId.", "");
+                if (model.description) {
+                    tooltip.innerText = tooltip.innerText + "\nDescription: " + model.description;
+                }
                 tooltip.style.display = 'block';
                 tooltip.style.left = "" + (evt.clientX) + "px";
                 tooltip.style.top = "" + (evt.clientY) + "px";
-            }
-        });
+            });
 
-        // 监听鼠标离开边
-        graph.on('edge:mouseleave', (evt) => {
-            const { item } = evt;
-            const model = item.getModel();
-            if (model.label) {
-                graph.updateItem(item, {
-                    style: {
-                        stroke: '#ff6666',
-                        lineWidth: 1,
-                    },
-                });
+            // 监听鼠标移出结点
+            g.on('node:mouseleave', (evt) => {
+                const node = evt.item;
+                if (nodeStyle.style) {
+                    g.updateItem(node, { style: nodeStyle.style });
+                }
                 tooltip.style.display = 'none';
-            }
-        });
+            });
+
+            // 监听鼠标悬浮在边上
+            g.on('edge:mouseenter', (evt) => {
+                const { item } = evt;
+                const model = item.getModel();
+                if (model.label) {
+                    g.updateItem(item, {
+                        style: {
+                            stroke: 'red',
+                            lineWidth: 2,
+                        },
+                    });
+                    tooltip.innerText = model.label + "\nsimilarity is: " + model.score;
+                    tooltip.style.display = 'block';
+                    tooltip.style.left = "" + (evt.clientX) + "px";
+                    tooltip.style.top = "" + (evt.clientY) + "px";
+                }
+            });
+
+            // 监听鼠标离开边
+            g.on('edge:mouseleave', (evt) => {
+                const { item } = evt;
+                const model = item.getModel();
+                if (model.label) {
+                    g.updateItem(item, {
+                        style: {
+                            stroke: strongSimilarityEdgesStrokeColor,
+                            lineWidth: 1,
+                        },
+                    });
+                    tooltip.style.display = 'none';
+                }
+            });
+        }
 
         let lastClickTime = 0;
         const throttleDelay = 1000;  // 节流间隔
@@ -401,15 +485,15 @@
             const resultJson = JSON.parse(data.msg[0].data);
             console.debug('handleNodeClick resultJson:', resultJson);
             await handleResult(resultJson, nodeId);
+            await updateGeneratedParentChildEdgeColor();
             await resetOverview();
-            if (resultJson.add.nodes) {
+            if (resultJson && resultJson.add && resultJson.add.nodes) {
                 await refreshSearch(resultJson.add.nodes.map(node => node.id));
             }
         }
 
         function handleResult(result, nodeId) {
             console.log("begin handleResult");
-            // clearRelation();
             if (result && result.add) {
                 const parent = nodeMap[nodeId];
                 // 处理 add 中的 nodes
@@ -417,10 +501,11 @@
                     result.add.nodes.forEach(node => {
                         const child = {
                             id: node.id,
-                            label: node.name,
+                            label: handleNodeLabel(node.name),
                             depth: node.depth,
                             children: [],
-                            style: node.merge ? { fill: '#c86464', stroke: '#8f8b8b', lineWidth: 1} : {fill: '#97c2fc', stroke: '#8f8b8b', lineWidth: 1},
+                            merge: node.merge,
+                            style: node.merge ? { fill: generatedNodesFillColor, stroke: allNodesStrokeColor, lineWidth: 1} : {fill: originalNodesFillColor, stroke: allNodesStrokeColor, lineWidth: 1},
                             description: node.description,
                         };
                         parent.children.push(child);
@@ -439,6 +524,25 @@
         }
 
         function handleRelation(links) {
+            const tbody = document.getElementById(`${paragraphId}_relation_table_body`);
+            if (!tbody) {
+                console.error(`Table body with id ${paragraphId}_relation_table_body not found!`);
+                return;
+            }
+            const existingRows = tbody.getElementsByTagName('tr');
+            let startIndex = existingRows.length;
+            if (startIndex === 1 && links.length > 0) {
+                const firstRowCells = existingRows[0].getElementsByTagName('td');
+                if (firstRowCells.length >= 3) {
+                    const sourceText = firstRowCells[1].textContent.trim();
+                    const targetText = firstRowCells[2].textContent.trim();
+                    if (sourceText === "*.path.*" && targetText === "*.path.*") {
+                        tbody.innerHTML = "";
+                        startIndex = 0;
+                    }
+                }
+            }
+
             links.forEach((link, index) => {
                 const edgeConfig = {
                     source: link.from,
@@ -446,7 +550,7 @@
                     label: link.relation,
                     score: link.score,
                     style: {
-                        stroke: '#ff6666',
+                        stroke: strongSimilarityEdgesStrokeColor,
                         lineWidth: 1,
                         radius: 10,
                     },
@@ -475,15 +579,58 @@
                     }
                 }
                 graph.addItem('edge', edgeConfig);
+
+                let row = tbody.insertRow();
+                let cell1 = row.insertCell(0);
+                cell1.textContent = startIndex + index + 1;
+                let cell2 = row.insertCell(1);
+                cell2.innerHTML = link.from.replace("rootId.", "");
+                let cell3 = row.insertCell(2);
+                cell3.innerHTML = link.to.replace("rootId.", "");
+                let cell4 = row.insertCell(3);
+                cell4.textContent = link.relation;
+                let cell5 = row.insertCell(4);
+                cell5.textContent = link.score.toFixed(2);
             });
         }
 
+        function handleNodeLabel(str) {
+            const maxLabelLength = 12;
+            return str.length > maxLabelLength
+                    ? str.substring(0, maxLabelLength) + "..."
+                    : str;
+        }
 
         function resetOverview() {
             const nodeNum = graph.getNodes().length;
-            const relationNum = graph.getEdges().filter(edge => edge.getModel().label !== undefined).length;
-            document.getElementById("${paragraphId}_node_num").textContent = nodeNum;
-            document.getElementById("${paragraphId}_relation_num").textContent = relationNum;
+            const generatedNodeNum = graph.getNodes().filter(node => node.getModel().merge).length;
+            const originalNodeNum = nodeNum - generatedNodeNum - 1;
+            const discoveredSimilarityRelationNum = graph.getEdges().filter(edge => edge.getModel().label !== undefined).length;
+            const originalParentRelationNum = graph.getEdges().filter(edge => edge.getModel().style.stroke === originalParentChildEdgesStrokeColor).length;
+            document.getElementById("${paragraphId}_original_node_num").textContent = originalNodeNum;
+            document.getElementById("${paragraphId}_generated_node_num").textContent = generatedNodeNum;
+            document.getElementById("${paragraphId}_original_parent-child_relation_num").textContent = originalParentRelationNum;
+            document.getElementById("${paragraphId}_discovered_similarity_relation_num").textContent = discoveredSimilarityRelationNum;
+        }
+
+        function updateGeneratedParentChildEdgeColor() {
+            const edges = graph.getEdges();
+            edges.forEach(edge => {
+                const model = edge.getModel();
+                if (!model.label) {
+                    const sourceNode = graph.findById(model.source);
+                    const targetNode = graph.findById(model.target);
+                    const sourceModel = sourceNode?.getModel();
+                    const targetModel = targetNode?.getModel();
+                    if ((sourceModel?.merge === true) || (targetModel?.merge === true) || (sourceModel?.id === "rootId") || (targetModel?.id === "rootId")) {
+                        graph.updateItem(edge, {
+                            style: {
+                                stroke: generatedParentChildEdgesStrokeColor
+                            }
+                        });
+                    }
+                }
+            });
         }
 
         function handleError(error) {
@@ -506,21 +653,20 @@
             const result = await executor.execute(statement);
             searchedNodes = JSON.parse(result.msg[0].data);
             console.log('searchedNodes: ' + searchedNodes);
-            await handleResearch();
+            await handleSearch();
             await refreshSearch(Object.keys(nodeMap));
         };
 
-        function handleResearch() {
+        function handleSearch() {
             let tableBody = document.getElementById("${paragraphId}_search_table_body");
             tableBody.innerHTML = "";
             searchedNodes.forEach((node, index) => {
                 let row = tableBody.insertRow();
                 let cell1 = row.insertCell(0);
-                cell1.style.textAlign = "center";
                 cell1.textContent = index + 1;
                 let parts = node.id.split(".");
                 for (let i = 0; i < Math.min(node.mergeLevel, parts.length); i++) {
-                    parts[i] = `<span style="color: red;">` + parts[i]  + `</span>`;
+                    parts[i] = `<span style="color: #dc3545;">` + parts[i]  + `</span>`;
                 }
                 parts.shift();
                 let formattedId = parts.join(".");
@@ -531,20 +677,19 @@
             });
         }
 
-        // 填充变色：表示该结点是searchedNode；边框变色：表示该结点是某searchedNode的父结点
         function refreshSearch(ids) {
             for (let i = 0; i < ids.length; i++) {
                 for (let j = 0; j < searchedNodes.length; j++) {
                     if (ids[i] === searchedNodes[j].id) {
                         graph.updateItem(ids[i], {
                             style: {
-                                fill: '#d0aa4a'
+                                fill: searchedNodesFillColor
                             }
                         });
                     } else if (searchedNodes[j].id.startsWith(ids[i])) {
                         graph.updateItem(ids[i], {
                             style: {
-                                stroke: '#ffe500'
+                                stroke: searchedParentNodesStrokeColor
                             }
                         });
                     }
@@ -552,16 +697,9 @@
             }
         }
 
-        document.getElementById("${paragraphId}_sidebar").addEventListener("toggle", function () {
-            const rightPanel = document.getElementById("${paragraphId}_rightPanel");
-            const summary = this.querySelector("summary");
-            if (this.open) {
-                rightPanel.style.width = "calc(100% - 320px)";
-                summary.textContent = "☰ Hide Sidebar";
-            } else {
-                rightPanel.style.width = "100%";
-                summary.textContent = "☰ Show Sidebar";
-            }
-        });
+        document.getElementById('${paragraphId}_fitView_button').addEventListener('click', () => graph.fitView());
+        document.getElementById('${paragraphId}_zoomIn_button').addEventListener('click', () => graph.zoom(1.2));
+        document.getElementById('${paragraphId}_zoomOut_button').addEventListener('click', () => graph.zoom(0.8));
+
     })();
 </script>

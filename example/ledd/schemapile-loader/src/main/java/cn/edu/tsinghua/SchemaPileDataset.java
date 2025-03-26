@@ -124,6 +124,9 @@ public class SchemaPileDataset {
     List<Object[]> values = new ArrayList<>();
 
     for (IginxColumn column : data) {
+      if (column.getPath().contains("shadowsocks")) {
+        continue;
+      }
       paths.add(column.getPath());
       types.add(column.getType());
       values.add(Arrays.copyOf(column.getValues(), maxLen));
