@@ -30,7 +30,6 @@ public class DataPropertyInterpreter {
   private final IginxDao iginx;
 
   public DataPropertyInterpreter(Session session, String milvusHost, int milvusPort) {
-    //    this.iginx = new IginxDao(session, milvusHost, milvusPort);
     this.iginx = IginxDao.getInstance(session, milvusHost, milvusPort);
   }
 

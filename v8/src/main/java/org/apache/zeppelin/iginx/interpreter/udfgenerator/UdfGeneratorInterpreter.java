@@ -14,7 +14,6 @@ public class UdfGeneratorInterpreter {
   private final IginxDao iginx;
 
   public UdfGeneratorInterpreter(Session session, String milvusHost, int milvusPort) {
-    //    this.iginx = new IginxDao(session, milvusHost, milvusPort);
     this.iginx = IginxDao.getInstance(session, milvusHost, milvusPort);
   }
 
@@ -31,7 +30,6 @@ public class UdfGeneratorInterpreter {
   }
 
   public InterpreterResult interpret(String statement) {
-    LOGGER.info("interpret: statement is {}", statement);
     // 截取第一个空格之前的内容和之后的内容
     String[] strings = statement.trim().split(" ");
     String cmd = strings[0];
@@ -40,11 +38,11 @@ public class UdfGeneratorInterpreter {
     try {
       switch (cmd) {
         case ">generate.udf.encode":
-          return displayUdfGenerator(args, "Encoder");
+          return displayUdfGenerator(args, "Encode");
         case ">generate.udf.insert":
-          return displayUdfGenerator(args, "Inserter");
+          return displayUdfGenerator(args, "Insert");
         case ">generate.udf.describe":
-          return displayUdfGenerator(args, "Descriptor");
+          return displayUdfGenerator(args, "Describe");
         default:
           throw new IllegalArgumentException("Invalid command: " + cmd);
       }
@@ -54,10 +52,9 @@ public class UdfGeneratorInterpreter {
   }
 
   private InterpreterResult displayUdfGenerator(String[] args, String type) {
-    LOGGER.info("displayUdfGenerator: type is {}", type);
     try {
       String description = String.join(" ", args);
-      String udf = iginx.generateUdf(description, type, DEFAULT_GENERATE_UDF_FUNCTION);
+      String udf = iginx.generateUdf(description, type, DEFAULT_GENERATE_UDF_FUNCTION).replace("```python", "").replace("```", "");
       LOGGER.info("displayUdfGenerator is {}", udf);
       return new InterpreterResult(
           InterpreterResult.Code.SUCCESS, InterpreterResult.Type.TEXT, udf);

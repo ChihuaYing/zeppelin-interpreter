@@ -161,7 +161,6 @@ public class IginxDao {
             "select `%s(udf)`"
                 + " from (select %<s(*, type='%s', description='%s') from (show columns ###));",
             function, type, description);
-    LOGGER.info("sql is {}", sql);
     List<List<Object>> values = executeSql(sql);
     return new String((byte[]) values.get(0).get(0), StandardCharsets.UTF_8);
   }
