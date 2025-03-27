@@ -57,7 +57,7 @@
         <!-- 左侧面板 -->
         <div id="${paragraphId}_leftPanel" style="width: 400px; padding: 10px;">
             <div style="border: 1px solid #ddd; padding: 10px; border-radius: 5px;">
-                <div style="color: black; font-size: 1.5rem;"><strong>SchemaPile</strong></div>
+                <div style="color: black; font-size: 1.8rem; margin-bottom: 5px"><strong>SchemaPile</strong></div>
                 <div style="background-color: #6c757d; color: white; padding: 5px 10px; border-radius: 5px; font-size: 1.2rem; display: inline-block;">
                     <strong>Overview</strong>
                 </div>
@@ -123,8 +123,8 @@
                         <strong>Search</strong>
                     </div>
                     <div>
-                        <label for="${paragraphId}_search_top_k_box" style="width: 60px; text-align: right; vertical-align: middle;"><Strong>Top K: </Strong></label>
-                        <input type="text" id="${paragraphId}_search_top_k_box" style="width: 35px; vertical-align: middle;" value="10"/>
+                        <label for="${paragraphId}_search_top_k_box" style="width: 60px; text-align: right;"><Strong>Top K: </Strong></label>
+                        <input type="text" id="${paragraphId}_search_top_k_box" style="width: 35px;" value="10"/>
                     </div>
                     <div style="display: flex; align-items: center;">
                         <select id="${paragraphId}_search_select" style="padding: 5px; border: 1px solid #ccc; border-radius: 4px; margin-right: 5px">
@@ -134,8 +134,8 @@
                 </div>
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 10px;">
                     <div>
-                        <label for="${paragraphId}_search_box" style="width: 80px; text-align: center; vertical-align: middle;"><Strong>Keyword: </Strong></label>
-                        <input type="text" id="${paragraphId}_search_box" style="width: 180px; vertical-align: middle;" placeholder="Search..."/>
+                        <label for="${paragraphId}_search_box" style="width: 80px; text-align: center;"><Strong>Keywords: </Strong></label>
+                        <input type="text" id="${paragraphId}_search_box" style="width: 180px;" placeholder="Search..."/>
                     </div>
                     <button id="${paragraphId}_search_button" style="width: 80px; margin-right: 5px; vertical-align: middle;" type="button" class="btn btn-default btn-xs">Search</button>
                 </div>
@@ -145,13 +145,13 @@
                         <div class="plan_box">
                             <table style="border-spacing: 5px;">
                                 <thead>
-                                <td class="head" style="width: 10%;">#&nbsp;&nbsp;</td>
+                                <td class="head" style="width: 10%;">&nbsp;#&nbsp;&nbsp;</td>
                                 <td class="head" style="width: 70%;">Path</td>
                                 <td class="head" style="width: 20%;">Similarity</td>
                                 </thead>
                                 <tbody id="${paragraphId}_search_table_body">
                                 <tr>
-                                    <td>1</td>
+                                    <td>&nbsp;1</td>
                                     <td>*.path.*</td>
                                     <td>0.88</td>
                                 </tr>
@@ -165,16 +165,24 @@
 
         <!-- 右侧面板 -->
         <div id="${paragraphId}_rightPanel" style="flex-grow: 1; padding: 10px; transition: width 0.3s;">
-            <div style="padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
-                <strong>Legends: </strong>
-                <span style="color: #77c7da;">&#9679;</span> : virtual root node;<span>&nbsp;&nbsp;</span>
-                <span style="color: #2ecc71;">&#9679;</span> : generated node;<span>&nbsp;&nbsp;</span>
-                <span style="color: #ffc107;">&#9679;</span> : searched node;<span>&nbsp;&nbsp;</span>
-                <span style="display: inline-block; width: 6px; height: 6px; border: 2px solid #ffe500; border-radius: 50%;"></span> : parent node of searched node;&nbsp;&nbsp;
-                <span style="display: inline-block; width: 10px; height: 2px; background-color: #dc3545;"></span> : discovered similarity relation
-            </div>
-            <div id="${paragraphId}_single_container" class="data-property-container panel panel-default" style="margin-top: 10px; height: 80vh;">
-                <div style="position: absolute; top: 10px; left: 10px; padding: 8px; border-radius: 5px;">
+            <div id="${paragraphId}_single_container" class="data-property-container panel panel-default" style="height: 85vh;">
+                <div style="position: absolute; top: 10px; left: 10px; background: rgba(255,255,255,0.9); padding: 8px; border: 1px solid #ddd; border-radius: 5px; z-index: 100; min-width: 120px;">
+                    <div id="${paragraphId}_legend_Toggle_button" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
+                        <strong>Legends</strong>
+                        <span id="${paragraphId}_legend_toggle_icon" style="font-size: 12px;">▼</span>
+                    </div>
+                    <div id="${paragraphId}_legend_content" style="margin-top: 5px;">
+                        <div style="display: flex; align-items: center; margin-bottom: 3px;"><span style="color: #77c7da; margin-right: 5px;">●</span><span>Virtual Root Node</span></div>
+                        <div style="display: flex; align-items: center; margin-bottom: 3px;"><span style="color: #d3d3d3; margin-right: 5px;">●</span><span>Original Parent-Child Node</span></div>
+                        <div style="display: flex; align-items: center; margin-bottom: 3px;"><span style="color: #2ecc71; margin-right: 5px;">●</span><span>Generated Node</span></div>
+                        <div style="display: flex; align-items: center; margin-bottom: 3px;"><span style="color: #ffc107; margin-right: 5px;">●</span><span>Searched Node</span></div>
+                        <div style="display: flex; align-items: center; margin-bottom: 3px;"><span style="display: inline-block; width: 6px; height: 6px; border: 2px solid #ffe500; border-radius: 50%; margin-right: 5px;"></span><span>Parent of Searched Node</span></div>
+                        <div style="display: flex; align-items: center;"><span style="display: inline-block; width: 5px; height: 2px; background-color: #b0c4de; margin-right: 5px;"></span><span>Generated Parent-Child Relation</span></div>
+                        <div style="display: flex; align-items: center;"><span style="display: inline-block; width: 5px; height: 2px; background-color: #cccccc; margin-right: 5px;"></span><span>Original Parent-Child Relation</span></div>
+                        <div style="display: flex; align-items: center;"><span style="display: inline-block; width: 5px; height: 2px; background-color: #dc3545; margin-right: 5px;"></span><span>Discovered Similarity Relation</span></div>
+                    </div>
+                </div>
+                <div style="position: absolute; top: 10px; right: 10px; padding: 8px; border-radius: 5px;">
                     <button id="${paragraphId}_fitView_button" type="button" class="btn btn-default btn-xs" style="margin-right: 8px">fitView</button>
                     <button id="${paragraphId}_zoomIn_button" type="button" class="btn btn-default btn-xs" style="margin-right: 8px">zoomIn</button>
                     <button id="${paragraphId}_zoomOut_button" type="button" class="btn btn-default btn-xs" style="margin-right: 8px">zoomOut</button>
@@ -271,7 +279,7 @@
         const originalParentChildEdgesStrokeColor = '#cccccc';
         const strongSimilarityEdgesStrokeColor = '#dc3545';
         const searchedParentNodesStrokeColor = '#ffe500';
-        const generatedParentChildEdgesStrokeColor = "#B0C4DE";
+        const generatedParentChildEdgesStrokeColor = "#b0c4de";
 
         const container = document.getElementById('${paragraphId}_single_container');
         const width = container.clientWidth;
@@ -290,14 +298,15 @@
                 style: {
                     fill: originalNodesFillColor,
                     stroke: allNodesStrokeColor,
-                    lineWidth: 1,
+                    lineWidth: 2,
                 },
                 labelCfg: {
                     position: 'left',
                     offset: 5,
                     style: {
                         fill: '#000000',
-                        fontSize: 12,
+                        fontWeight: 550,
+                        fontSize: 14,
                         textAlign: 'right',
                     },
                 },
@@ -338,7 +347,7 @@
                 id: rootNode.id,
                 label: rootNode.name || "Data Asset",
                 depth: rootNode.depth,
-                style: { fill: virtualRootNodeFillColor, stroke: allNodesStrokeColor, lineWidth: 1},
+                style: { fill: virtualRootNodeFillColor, stroke: allNodesStrokeColor, lineWidth: 2},
                 children: [],
             };
 
@@ -354,7 +363,7 @@
                     depth: node.depth,
                     children: [],
                     merge: node.merge,
-                    style: node.merge === true ? { fill: generatedNodesFillColor, stroke: allNodesStrokeColor, lineWidth: 1} : {fill: originalNodesFillColor, stroke: allNodesStrokeColor, lineWidth: 1},
+                    style: node.merge === true ? { fill: generatedNodesFillColor, stroke: allNodesStrokeColor, lineWidth: 2} : {fill: originalNodesFillColor, stroke: allNodesStrokeColor, lineWidth: 2},
                     description: node.description,
                 };
                 parent.children.push(child);
@@ -397,7 +406,7 @@
                 g.updateItem(node, {
                     style: {
                         stroke: suspendedNodesFillColor,
-                        lineWidth: 2,
+                        lineWidth: 4,
                     },
                 });
                 tooltip.innerText = "Node: " + model.id.replace("rootId.", "");
@@ -426,7 +435,7 @@
                     g.updateItem(item, {
                         style: {
                             stroke: 'red',
-                            lineWidth: 2,
+                            lineWidth: 4,
                         },
                     });
                     tooltip.innerText = model.label + "\nsimilarity is: " + model.score;
@@ -444,7 +453,7 @@
                     g.updateItem(item, {
                         style: {
                             stroke: strongSimilarityEdgesStrokeColor,
-                            lineWidth: 1,
+                            lineWidth: 2,
                         },
                     });
                     tooltip.style.display = 'none';
@@ -505,7 +514,7 @@
                             depth: node.depth,
                             children: [],
                             merge: node.merge,
-                            style: node.merge ? { fill: generatedNodesFillColor, stroke: allNodesStrokeColor, lineWidth: 1} : {fill: originalNodesFillColor, stroke: allNodesStrokeColor, lineWidth: 1},
+                            style: node.merge ? { fill: generatedNodesFillColor, stroke: allNodesStrokeColor, lineWidth: 2} : {fill: originalNodesFillColor, stroke: allNodesStrokeColor, lineWidth: 2},
                             description: node.description,
                         };
                         parent.children.push(child);
@@ -551,7 +560,7 @@
                     score: link.score,
                     style: {
                         stroke: strongSimilarityEdgesStrokeColor,
-                        lineWidth: 1,
+                        lineWidth: 2,
                         radius: 10,
                     },
                     labelCfg: {
@@ -572,9 +581,9 @@
                     } else {
                         edgeConfig.shape = 'polyline';
                         edgeConfig.controlPoints = [
-                            { x: sourceNode.x + dy/5, y: sourceNode.y + dy/5 },
-                            { x: sourceNode.x + dy/4, y: targetNode.y - dy/2 },
-                            { x: sourceNode.x + dy/5, y: targetNode.y - dy/5 },
+                            { x: sourceNode.x + distance/5, y: sourceNode.y + dy/5 },
+                            { x: sourceNode.x + distance/4, y: targetNode.y - dy/2 },
+                            { x: sourceNode.x + distance/5, y: targetNode.y - dy/5 },
                         ];
                     }
                 }
@@ -663,7 +672,7 @@
             searchedNodes.forEach((node, index) => {
                 let row = tableBody.insertRow();
                 let cell1 = row.insertCell(0);
-                cell1.textContent = index + 1;
+                cell1.innerHTML = "&nbsp;" + (index + 1);
                 let parts = node.id.split(".");
                 for (let i = 0; i < Math.min(node.mergeLevel, parts.length); i++) {
                     parts[i] = `<span style="color: #dc3545;">` + parts[i]  + `</span>`;
@@ -673,7 +682,7 @@
                 let cell2 = row.insertCell(1);
                 cell2.innerHTML = formattedId;
                 let cell3 = row.insertCell(2);
-                cell3.textContent = node.score;
+                cell3.innerHTML = "&nbsp;" + node.score;
             });
         }
 
@@ -700,6 +709,22 @@
         document.getElementById('${paragraphId}_fitView_button').addEventListener('click', () => graph.fitView());
         document.getElementById('${paragraphId}_zoomIn_button').addEventListener('click', () => graph.zoom(1.2));
         document.getElementById('${paragraphId}_zoomOut_button').addEventListener('click', () => graph.zoom(0.8));
+        const toggleButton = document.getElementById('${paragraphId}_legend_Toggle_button');
+        const content = document.getElementById('${paragraphId}_legend_content');
+        const icon = document.getElementById('${paragraphId}_legend_toggle_icon');
+        if(content.style.display === '') {
+            content.style.display = 'block';
+        }
+        toggleButton.addEventListener('click', function() {
+            console.log("Toggle button clicked");
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                icon.textContent = '▼';
+            } else {
+                content.style.display = 'none';
+                icon.textContent = '▶';
+            }
+        });
 
     })();
 </script>
