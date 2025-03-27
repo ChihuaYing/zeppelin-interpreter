@@ -7,7 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Multimap;
 import java.util.*;
 import org.apache.velocity.VelocityContext;
-import org.apache.zeppelin.iginx.interpreter.dataproperty.IginxDao;
+import org.apache.zeppelin.iginx.interpreter.IginxDao;
 import org.apache.zeppelin.iginx.interpreter.dataproperty.entry.ClusterNode;
 import org.apache.zeppelin.iginx.interpreter.dataproperty.entry.Relation;
 import org.apache.zeppelin.iginx.interpreter.dataproperty.entry.SearchedNode;

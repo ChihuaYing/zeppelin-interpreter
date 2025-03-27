@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.velocity.VelocityContext;
+import org.apache.zeppelin.iginx.interpreter.IginxDao;
 import org.apache.zeppelin.iginx.interpreter.dataproperty.network.NetworkService;
 import org.apache.zeppelin.iginx.util.TableUtil;
 import org.apache.zeppelin.interpreter.InterpreterContext;
@@ -29,10 +30,11 @@ public class DataPropertyInterpreter {
   private final IginxDao iginx;
 
   public DataPropertyInterpreter(Session session, String milvusHost, int milvusPort) {
-    this.iginx = new IginxDao(session, milvusHost, milvusPort);
+    //    this.iginx = new IginxDao(session, milvusHost, milvusPort);
+    this.iginx = IginxDao.getInstance(session, milvusHost, milvusPort);
   }
 
-  public boolean canInterpret(String sql, InterpreterContext context) {
+  public boolean canInterpret(String sql) {
     String cmd = sql.trim().split(" ")[0];
     switch (cmd) {
       case ">network":

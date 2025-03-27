@@ -1,4 +1,4 @@
-package org.apache.zeppelin.iginx.interpreter.dataproperty;
+package org.apache.zeppelin.iginx.interpreter;
 
 import cn.edu.tsinghua.iginx.exception.SessionException;
 import cn.edu.tsinghua.iginx.session.Column;
@@ -17,18 +17,30 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.zeppelin.iginx.interpreter.dataproperty.entry.ClusterNode;
 import org.apache.zeppelin.iginx.interpreter.dataproperty.entry.Relation;
 import org.apache.zeppelin.iginx.interpreter.dataproperty.entry.SearchedNode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class IginxDao {
+  private static final Logger LOGGER = LoggerFactory.getLogger(IginxDao.class);
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
   private final Session session;
   private final String milvusHost;
   private final int milvusPort;
+  private static IginxDao instance;
 
   public IginxDao(Session session, String milvusHost, int milvusPort) {
     this.session = session;
     this.milvusHost = milvusHost;
     this.milvusPort = milvusPort;
+  }
+
+  public static synchronized IginxDao getInstance(
+      Session session, String milvusHost, int milvusPort) {
+    if (instance == null) {
+      instance = new IginxDao(session, milvusHost, milvusPort);
+    }
+    return instance;
   }
 
   public List<Column> getPathOf(String iginxPattern) {
@@ -136,6 +148,22 @@ public class IginxDao {
       relations.add(new Relation(source, target, score, description));
     }
     return relations;
+  }
+
+  public String generateUdf(String description, String type, String function) {
+    LOGGER.info("generateUdf");
+    Preconditions.checkNotNull(description);
+    Preconditions.checkNotNull(type);
+    Preconditions.checkArgument(StringUtils.isNotBlank(function));
+
+    String sql =
+        String.format(
+            "select `%s(udf)`"
+                + " from (select %<s(*, type='%s', description='%s') from (show columns ###));",
+            function, type, description);
+    LOGGER.info("sql is {}", sql);
+    List<List<Object>> values = executeSql(sql);
+    return new String((byte[]) values.get(0).get(0), StandardCharsets.UTF_8);
   }
 
   private List<List<Object>> executeSql(String sql) {
