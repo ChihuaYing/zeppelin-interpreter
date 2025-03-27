@@ -1,6 +1,7 @@
 UDSF,search_embedding,UDFSearchEmbedding,SearchEmbedding.py
 UDSF,analyse_relation,UDFAnalyseRelation,AnalyseRelation.py
-UDSF,merge,UDFMerge,Merge.py
-UDSF,default_describe,UDFDefaultDescriptor,DefaultDescriptor.py
-UDSF,default_encode,UDFDefaultEncoder,DefaultEncoder.py
-UDSF,default_insert,UDFDefaultInserter,DefaultInserter.py
+UDSF,default_describe,UDFDefaultDescribe,default.DefaultDescribe.py
+UDSF,default_encode,UDFDefaultEncode,default.DefaultEncode.py
+UDSF,default_insert,UDFDefaultInsert,default.DefaultInsert.py
+UDSF,default_fetch,UDFDefaultFetch,default.DefaultFetch.py
+UDSF,default_cluster,UDFDefaultCluster,default.DefaultCluster.py

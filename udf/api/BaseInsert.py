@@ -1,11 +1,10 @@
 from abc import abstractmethod
 
 import numpy as np
-import numpy.typing as npt
 
-class UDFBaseInserter:
+class UDFBaseInsert:
     @abstractmethod
-    def insert(self, paths: list[str], types: list[str], descriptions: list[str], embeddings:list[npt.NDArray]) -> tuple[int,int]:
+    def insert(self, paths: list[str], types: list[str], descriptions: list[str], embeddings:list[np.ndarray]) -> tuple[int,int]:
         pass
 
     def transform(self, data, args, kvargs):

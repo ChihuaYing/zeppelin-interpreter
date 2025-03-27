@@ -4,9 +4,9 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 import tqdm
 
-from BaseDescriptor import UDFBaseDescriptor
+from api.BaseDescribe import UDFBaseDescribe
 
-class UDFDefaultDescriptor(UDFBaseDescriptor):
+class UDFDefaultDescribe(UDFBaseDescribe):
 
     def _build_descriptions(self, paths: list[str]) -> dict[str, str]:
         print("building descriptions for", len(paths), "paths")

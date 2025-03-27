@@ -1,13 +1,14 @@
-from numpy import typing as npt
+import numpy as np
 from pymilvus import connections, Collection, FieldSchema, DataType, CollectionSchema
 from pymilvus.orm import utility
 import tqdm
 
-from BaseInserter import UDFBaseInserter
+from api.BaseInsert import UDFBaseInsert
+from default.DefaultUtilities import MILVUS_HOST, MILVUS_PORT, MILVUS_COLLECTION
 
-class UDFDefaultInserter(UDFBaseInserter):
 
-    def __init__(self, milvus_host="milvus", milvus_port=19530, collection_name = "embeddings", batch_size=1000):
+class UDFDefaultInsert(UDFBaseInsert):
+    def __init__(self, milvus_host=MILVUS_HOST, milvus_port=MILVUS_PORT, collection_name = MILVUS_COLLECTION, batch_size=1000):
         self.milvus_host = milvus_host
         self.milvus_port = milvus_port
         self.collection_name = collection_name
@@ -24,6 +25,7 @@ class UDFDefaultInserter(UDFBaseInserter):
         print(f"Creating collection")
         collection = Collection(self.collection_name, schema=CollectionSchema([
             FieldSchema(name="path", dtype=DataType.VARCHAR, max_length=255, is_primary=True),
+            FieldSchema(name="level", dtype=DataType.INT32),
             FieldSchema(name="type", dtype=DataType.VARCHAR, max_length=10,nullable=True),
             FieldSchema(name="description", dtype=DataType.VARCHAR, max_length=4097),
             FieldSchema(name="embedding", dtype=DataType.FLOAT_VECTOR, dim=768),
@@ -39,6 +41,9 @@ class UDFDefaultInserter(UDFBaseInserter):
             },
         )
         collection.create_index(
+            field_name="level",
+        )
+        collection.create_index(
             field_name="path",
             index_params={
                 "index_type": "Trie",
@@ -47,16 +52,18 @@ class UDFDefaultInserter(UDFBaseInserter):
         collection.load()
         return collection
 
-    def insert(self,paths: list[str],types: list[str],descriptions: list[str], embeddings: list[npt.NDArray]) -> tuple[int, int]:
+    def insert(self,paths: list[str],types: list[str],descriptions: list[str], embeddings: list[np.ndarray]) -> tuple[int, int]:
         insert_results = []
         collection = self._recreate_and_load_collection()
+        levels = [path.count('.') for path in paths]
         with tqdm.tqdm(total=len(paths), desc="Inserting embeddings") as pbar:
             for i in range(0, len(paths), self.batch_size):
                 paths_batch = paths[i:i + self.batch_size]
+                levels_batch = levels[i:i + self.batch_size]
                 types_batch = types[i:i + self.batch_size]
                 descriptions_batch = descriptions[i:i + self.batch_size]
                 embeddings_batch = embeddings[i:i + self.batch_size]
-                insert_result = collection.insert([paths_batch, types_batch, descriptions_batch, embeddings_batch])
+                insert_result = collection.insert([paths_batch, levels_batch, types_batch, descriptions_batch, embeddings_batch])
                 insert_results.append(insert_result)
                 pbar.update(len(paths_batch))
         inserted = sum([result.insert_count for result in insert_results])
@@ -64,8 +71,8 @@ class UDFDefaultInserter(UDFBaseInserter):
         return inserted, failed
 
 if __name__ == "__main__":
-    from DefaultDescriptor import UDFDefaultDescriptor
-    descriptor = UDFDefaultDescriptor()
+    from DefaultDescribe import UDFDefaultDescribe
+    descriptor = UDFDefaultDescribe()
     paths = [
         "customer.c_custkey", "customer.c_name", "customer.c_address", "customer.c_nationkey", "customer.c_phone", "customer.c_acctbal", "customer.c_mktsegment", "customer.c_comment",
         "lineitem.l_orderkey", "lineitem.l_partkey", "lineitem.l_suppkey", "lineitem.l_linenumber", "lineitem.l_quantity", "lineitem.l_extendedprice", "lineitem.l_discount", "lineitem.l_tax", "lineitem.l_returnflag", "lineitem.l_linestatus", "lineitem.l_shipdate", "lineitem.l_commitdate", "lineitem.l_receiptdate", "lineitem.l_shipinstruct", "lineitem.l_shipmode", "lineitem.l_comment",
@@ -82,15 +89,15 @@ if __name__ == "__main__":
 
     descriptor_result[0] = [ name[1:-1] for name in descriptor_result[0]]
 
-    from  DefaultEncoder import UDFDefaultEncoder
-    encoder = UDFDefaultEncoder(cache_path="embeddings")
+    from  DefaultEncode import UDFDefaultEncode
+    encoder = UDFDefaultEncode(cache_path="embeddings")
     encoder_data = descriptor_result
     encoder_result = encoder.transform(encoder_data, [], {})
     print(encoder_result)
 
     encoder_result[0] = [name[1:-1] for name in encoder_result[0]]
 
-    inserter = UDFDefaultInserter(milvus_host="127.0.0.1")
+    inserter = UDFDefaultInsert(milvus_host="127.0.0.1")
     inserter_data = encoder_result
     inserter_result = inserter.transform(inserter_data, [], {})
     print(inserter_result)

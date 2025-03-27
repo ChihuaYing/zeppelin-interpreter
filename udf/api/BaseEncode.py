@@ -2,7 +2,7 @@ from abc import abstractmethod
 
 import numpy as np
 
-class UDFBaseEncoder:
+class UDFBaseEncode:
     @abstractmethod
     def encode(self, descriptions: list[str]) -> list[np.ndarray]:
         pass

@@ -66,19 +66,15 @@ services:
       - ./schemapile-loader/target/schemapile-loader-0.7.2-shaded.jar:/app/temp/schemapile-loader.jar
       - ../../udf/udf_list:/app/udf_funcs/udf_list
       - ../../udf/AnalyseRelation.py:/app/udf_funcs/python_scripts/AnalyseRelation.py
-      - ../../udf/Merge.py:/app/udf_funcs/python_scripts/Merge.py
       - ../../udf/SearchEmbedding.py:/app/udf_funcs/python_scripts/SearchEmbedding.py
-      - ../../udf/BaseDescriptor.py:/app/udf_funcs/python_scripts/BaseDescriptor.py
-      - ../../udf/BaseEncoder.py:/app/udf_funcs/python_scripts/BaseEncoder.py
-      - ../../udf/BaseInserter.py:/app/udf_funcs/python_scripts/BaseInserter.py
-      - ../../udf/DefaultDescriptor.py:/app/udf_funcs/python_scripts/DefaultDescriptor.py
-      - ../../udf/DefaultEncoder.py:/app/udf_funcs/python_scripts/DefaultEncoder.py
-      - ../../udf/DefaultInserter.py:/app/udf_funcs/python_scripts/DefaultInserter.py
+      - ../../udf/api:/app/udf_funcs/python_scripts/api
+      - ../../udf/default:/app/udf_funcs/python_scripts/default
     environment:
       zookeeperConnectionString: zk:2181
       storageEngineList: 192.168.0.7#6667#iotdb12#username=root#password=root#has_data=false#is_read_only=false
       HF_DATASETS_OFFLINE: 1
       HF_HUB_OFFLINE: 1
+      MILVUS_HOST: milvus
     links:
       - zk
       - iotdb

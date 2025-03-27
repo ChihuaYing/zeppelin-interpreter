@@ -48,15 +48,22 @@ public class IginxDao {
     return columns;
   }
 
-  public Multimap<ClusterNode, String> getGroupingOf(String iginxPattern, String function) {
+  public Multimap<ClusterNode, String> getGroupingOf(
+      String iginxPattern, String fetchFunction, String clusterFunction, int target) {
     Preconditions.checkArgument(StringUtils.isNotBlank(iginxPattern));
-    Preconditions.checkArgument(StringUtils.isNotBlank(function));
+    Preconditions.checkArgument(StringUtils.isNotBlank(fetchFunction));
+    Preconditions.checkArgument(StringUtils.isNotBlank(clusterFunction));
+
+    String fetchSql =
+        String.format(
+            "select `%s(path)` as path, `%<s(description)` as description, `%<s(embedding)` as embedding"
+                + " from (select %<s(*, pattern='%s',level=0) from (show columns ###))",
+            fetchFunction, iginxPattern);
 
     String sql =
         String.format(
-            "select `%s(path)`, `%<s(cluster)`"
-                + " from (select %<s(*, pattern='%s', host='%s', port='%d') from (show columns ###));",
-            function, iginxPattern, milvusHost, milvusPort);
+            "select `%s(path)`, `%<s(cluster)`" + " from (select %<s(*, target='%d') from (%s));",
+            clusterFunction, target, fetchSql);
 
     List<List<Object>> values = executeSql(sql);
     Multimap<ClusterNode, String> groupingMap = HashMultimap.create();

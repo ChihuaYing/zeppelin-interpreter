@@ -4,10 +4,12 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 import tqdm
 
-from BaseEncoder import UDFBaseEncoder
+from api.BaseEncode import UDFBaseEncode
+from default.DefaultUtilities import EMBEDDING_CACHE_PATH
 
-class UDFDefaultEncoder(UDFBaseEncoder):
-    def __init__(self, cache_path='cache/embeddings'):
+
+class UDFDefaultEncode(UDFBaseEncode):
+    def __init__(self, cache_path=EMBEDDING_CACHE_PATH):
         print("Initializing Sentence Transformer")
         self.encoder = SentenceTransformer("paraphrase-mpnet-base-v2")
         self.batch_size = 128
@@ -44,7 +46,7 @@ class UDFDefaultEncoder(UDFBaseEncoder):
 
 if __name__ == "__main__":
     # get temp file path
-    udf = UDFDefaultEncoder(cache_path='embeddings')
+    udf = UDFDefaultEncode(cache_path='embeddings')
     data=[['description'], ['BINARY'], ['hello'.encode()], ['world'.encode()]]
     result = udf.transform(data, [], {})
     print(result)

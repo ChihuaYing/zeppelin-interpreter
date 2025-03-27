@@ -141,7 +141,8 @@ public class NetworkService {
       LOGGER.info("the size of the groupingMap is too small");
       return;
     }
-    Multimap<ClusterNode, String> groupingMap = iginx.getGroupingOf(pattern, "merge");
+    Multimap<ClusterNode, String> groupingMap =
+        iginx.getGroupingOf(pattern, "default_fetch", "default_cluster", 23);
 
     Map<String, List<NetworkTreeNode>> labelToNodesMap = new HashMap<>();
     for (Map.Entry<ClusterNode, Collection<String>> group : groupingMap.asMap().entrySet()) {

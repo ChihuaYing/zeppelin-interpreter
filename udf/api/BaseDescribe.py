@@ -1,6 +1,6 @@
 from abc import abstractmethod
 
-class UDFBaseDescriptor:
+class UDFBaseDescribe:
     def __init__(self):
         pass
 
