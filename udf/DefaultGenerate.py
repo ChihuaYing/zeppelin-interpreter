@@ -7,13 +7,13 @@ class UDFDefaultGenerator:
         pass
 
     def generate_by_udf_content(self,base_udf_content: str, description: str) -> str:
-        prompt=f"""
-            我是系统开发者，希望你为用户生成一个UDF，这个UDF的基类代码如下：
+        prompt = f"""
+            I am a system developer and I would like you to generate a UDF for the user. The base class code for the UDF is as follows:
             ```python
             {base_udf_content}
             ```
-            仅输出UDF子类的代码，不需要包含基类代码，请以纯文本格式输出代码，而不是 markdown 格式。
-            请你根据以下用户提供描述，为用户生成一个UDF子类文件内容：
+            Only output the UDF subclass code, without including the base class code. Please output the code in plain text format, not in markdown format.
+            Based on the following description provided by the user, generate the content for the UDF subclass file:
             ```
             {description}
             ```
@@ -33,5 +33,5 @@ class UDFDefaultGenerator:
 if __name__ == "__main__":
     # get temp file path
     udf = UDFDefaultGenerator()
-    result = udf.generate('Encoder','请使用Sentence Transformer的 all-MiniLM-L6-v2 进行编码')
+    result = udf.generate('Encoder','Please encode using the Sentence Transformer model all-MiniLM-L6-v2')
     print(result)

@@ -82,9 +82,10 @@
                         <strong>Relation</strong>
                     </div>
                     <div style="display: flex; align-items: center;">
-                        <select id="${paragraphId}_relation_select" style="padding: 5px; border: 1px solid #ccc; border-radius: 4px; margin-right: 5px">
-                            <option value="analyse_relation">analyse_relation</option>
-                        </select>
+##                        <select id="${paragraphId}_relation_select" style="padding: 5px; border: 1px solid #ccc; border-radius: 4px; margin-right: 5px">
+##                            <option value="analyse_relation">analyse_relation</option>
+##                        </select>
+                        <input id="${paragraphId}_relation_input" type="text" value="analyse_relation" placeholder="input udf..." style="padding: 5px; border: 1px solid #ccc; border-radius: 4px; margin-right: 5px; width: 120px;">
                     </div>
                 </div>
                 <div style="display: flex; align-items: center; gap: 5px; margin-top: 10px;">
@@ -124,9 +125,10 @@
                         <input type="text" id="${paragraphId}_search_top_k_box" style="width: 35px;" value="10"/>
                     </div>
                     <div style="display: flex; align-items: center;">
-                        <select id="${paragraphId}_search_select" style="padding: 5px; border: 1px solid #ccc; border-radius: 4px; margin-right: 5px">
-                            <option value="default_search">default_search</option>
-                        </select>
+##                        <select id="${paragraphId}_search_select" style="padding: 5px; border: 1px solid #ccc; border-radius: 4px; margin-right: 5px">
+##                            <option value="default_search">default_search</option>
+##                        </select>
+                        <input id="${paragraphId}_search_input" type="text" value="default_search" placeholder="input udf..." style="padding: 5px; border: 1px solid #ccc; border-radius: 4px; margin-right: 5px; width: 120px;">
                     </div>
                 </div>
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 10px;">
@@ -486,7 +488,7 @@
         async function handleNodeClick(nodeId) {
             const executor = new IginxExecutor(window.location.protocol, window.location.host);
             console.debug('handleNodeClick:', nodeId);
-            const selectedUDF = document.getElementById("${paragraphId}_relation_select").value;
+            const selectedUDF = document.getElementById("${paragraphId}_relation_input").value;
             const statement = '>data.property.expand ${paragraphId} ' + nodeId + ' UDF' + selectedUDF;
             const data = await executor.execute(statement);
             console.debug('handleNodeClick executeInterpreter result:', data);
@@ -663,7 +665,7 @@
             if (!Number.isInteger(topK) || topK <= 0) {
                 handleError('Please enter an integer greater than 0');
             }
-            const selectedUDF = document.getElementById("${paragraphId}_search_select").value;
+            const selectedUDF = document.getElementById("${paragraphId}_search_input").value;
             const statement = '>data.property.search ${paragraphId} ' + topK + ' UDF' + selectedUDF + ' ' + keyword;
             const result = await executor.execute(statement);
             console.debug('handleSearch executeInterpreter result:', result);
@@ -682,9 +684,8 @@
                 cell1.innerHTML = "&nbsp;" + (index + 1);
                 let cell2 = row.insertCell(1);
                 cell2.innerHTML = getNameById(node.id);
-                // todo: 添加描述
                 let cell3 = row.insertCell(2);
-                cell3.innerHTML = "default description";
+                cell3.innerHTML = node.description;
                 let cell4 = row.insertCell(3);
                 cell4.innerHTML = node.score;
             });

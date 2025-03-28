@@ -308,17 +308,19 @@ public class NetworkService {
     }
   }
 
-  public String handleSearch(String description, String topK, String function) {
-    List<SearchedNode> paths = iginx.search(pattern, description, topK, function);
+  public String handleSearch(String keywords, String topK, String function) {
+    List<SearchedNode> paths = iginx.search(pattern, keywords, topK, function);
     JSONArray searchResultJson = new JSONArray();
     for (SearchedNode pathWithScore : paths) {
       String path = pathWithScore.getPath();
+      String description = pathWithScore.getDescription();
       double score = pathWithScore.getScore();
       String networkId = embeddingId2NetworkId.get(path);
       if (networkId != null) {
         JSONObject searchNodeJson = new JSONObject();
         searchNodeJson.put("id", networkId);
         searchNodeJson.put("score", score);
+        searchNodeJson.put("description", description);
         searchNodeJson.put("mergeLevel", networkId.split("\\.").length - path.split("\\.").length);
         searchResultJson.add(searchNodeJson);
       }

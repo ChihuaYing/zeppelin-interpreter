@@ -123,12 +123,12 @@ public class DataPropertyInterpreter extends AbstractExtensionInterpreter {
     String paragraphId = args[0];
     String topK = args[1];
     String function = args[2].substring(UDF.length());
-    String description = String.join(" ", Arrays.copyOfRange(args, 3, args.length));
+    String keywords = String.join(" ", Arrays.copyOfRange(args, 3, args.length));
 
     NetworkService networkService = networkMap.get(paragraphId);
     Preconditions.checkNotNull(networkService, "Network service not found: " + paragraphId);
 
-    String msg = networkService.handleSearch(description, topK, function);
+    String msg = networkService.handleSearch(keywords, topK, function);
     LOGGER.info("msg is {}", msg);
     return new InterpreterResult(InterpreterResult.Code.SUCCESS, InterpreterResult.Type.TEXT, msg);
   }

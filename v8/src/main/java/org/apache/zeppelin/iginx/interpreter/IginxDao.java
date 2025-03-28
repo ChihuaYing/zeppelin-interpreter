@@ -89,15 +89,15 @@ public class IginxDao {
   }
 
   public List<SearchedNode> search(
-      String iginxPattern, String description, String topK, String function) {
+      String iginxPattern, String keywords, String topK, String function) {
     // todo: 把 topK 放到 UDF 中
     // todo: 目前 score 值是直接放进去的，后续改为从 UDF 中获得
     Preconditions.checkArgument(StringUtils.isNotBlank(iginxPattern));
     Preconditions.checkArgument(StringUtils.isNotBlank(topK));
-    Preconditions.checkArgument(StringUtils.isNotBlank(description));
+    Preconditions.checkArgument(StringUtils.isNotBlank(keywords));
     Preconditions.checkArgument(StringUtils.isNotBlank(function));
 
-    String sourceSql = String.format("select \"%s\" as description", description);
+    String sourceSql = String.format("select \"%s\" as description", keywords);
     String encodeSql =
         String.format(
             "select `%s(description)` as description, `%<s(embedding)` as embedding"
