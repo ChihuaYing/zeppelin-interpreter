@@ -49,6 +49,11 @@
         line-height: 12px;
         font-weight: 600;
     }
+
+    td, th {
+        word-break: break-word;
+        white-space: normal;
+    }
 </style>
 
 ##<details open>
@@ -146,8 +151,8 @@
                                 <thead>
                                 <tr>
                                     <th class="head" style="width: 5%; text-align: left;">&nbsp;#</th>
-                                    <th class="head" style="width: 37%; text-align: left;">Name</th>
-                                    <th class="head" style="width: 50%; text-align: left;">Description</th>
+                                    <th class="head" style="width: 30%; text-align: left;">Name</th>
+                                    <th class="head" style="width: 57%; text-align: left;">Description</th>
                                     <th class="head" style="width: 8%; text-align: left;">Sim.</th>
                                 </tr>
                                 </thead>
@@ -359,8 +364,8 @@
                 const parent = nodeMap[node.parentId] || treeData;
                 const child = {
                     id: node.id,
-                    label: node.name,
-                    // label: handleNodeLabel(node.name),
+                    // label: node.name,
+                    label: handleNodeLabel(node.name),
                     depth: node.depth,
                     children: [],
                     merge: node.merge,
@@ -511,8 +516,8 @@
                     result.add.nodes.forEach(node => {
                         const child = {
                             id: node.id,
-                            label: node.name,
-                            // label: handleNodeLabel(node.name),
+                            // label: node.name,
+                            label: handleNodeLabel(node.name),
                             depth: node.depth,
                             children: [],
                             merge: node.merge,
@@ -606,7 +611,7 @@
         }
 
         function handleNodeLabel(str) {
-            const maxLabelLength = 12;
+            const maxLabelLength = 24;
             return str.length > maxLabelLength
                     ? str.substring(0, maxLabelLength) + "..."
                     : str;
@@ -687,7 +692,7 @@
                 let cell3 = row.insertCell(2);
                 cell3.innerHTML = node.description;
                 let cell4 = row.insertCell(3);
-                cell4.innerHTML = node.score;
+                cell4.innerHTML = node.score.toFixed(2);
             });
         }
 

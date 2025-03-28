@@ -142,7 +142,7 @@ public class NetworkService {
       return;
     }
     Multimap<ClusterNode, String> groupingMap =
-        iginx.getGroupingOf(pattern, "default_fetch", "default_cluster", 23);
+        iginx.getGroupingOf(pattern, "default_fetch", "default_cluster", 18);
 
     Map<String, List<NetworkTreeNode>> labelToNodesMap = new HashMap<>();
     for (Map.Entry<ClusterNode, Collection<String>> group : groupingMap.asMap().entrySet()) {

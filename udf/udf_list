@@ -1,4 +1,3 @@
-UDSF,search_embedding,UDFSearchEmbedding,SearchEmbedding.py
 UDSF,analyse_relation,UDFAnalyseRelation,AnalyseRelation.py
 UDSF,default_describe,UDFDefaultDescribe,default.DefaultDescribe.py
 UDSF,default_encode,UDFDefaultEncode,default.DefaultEncode.py
