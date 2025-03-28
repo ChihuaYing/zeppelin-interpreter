@@ -97,18 +97,27 @@ public class IginxDao {
     Preconditions.checkArgument(StringUtils.isNotBlank(description));
     Preconditions.checkArgument(StringUtils.isNotBlank(function));
 
+    String sourceSql = String.format("select \"%s\" as description", description);
+    String encodeSql =
+        String.format(
+            "select `%s(description)` as description, `%<s(embedding)` as embedding"
+                + " from (select %<s(*) from (%s))",
+            "default_encode", sourceSql);
+
     String sql =
         String.format(
-            "select `%s(path)`"
-                + " from (select %<s(*, description='%s', pattern='%s', host='%s', port='%d') from (show columns ###));",
-            function, description, iginxPattern, milvusHost, milvusPort);
+            "select `%s(path)`,`%<s(score)`, `%<s(similarity)`"
+                + " from (select %<s(*, pattern='%s', topk=%s) from (%s));",
+            function, iginxPattern, topK, encodeSql);
 
     List<List<Object>> values = executeSql(sql);
 
     List<SearchedNode> pairs = new ArrayList<>();
     for (List<Object> row : values) {
       String pathSepDot = new String((byte[]) row.get(0), StandardCharsets.UTF_8);
-      pairs.add(new SearchedNode(pathSepDot, 1.0));
+      double score = (double) row.get(1);
+      String descriptionStr = new String((byte[]) row.get(2), StandardCharsets.UTF_8);
+      pairs.add(new SearchedNode(pathSepDot, descriptionStr, score));
     }
     return pairs;
   }

@@ -125,7 +125,7 @@
                     </div>
                     <div style="display: flex; align-items: center;">
                         <select id="${paragraphId}_search_select" style="padding: 5px; border: 1px solid #ccc; border-radius: 4px; margin-right: 5px">
-                            <option value="semantic_search">semantic_search</option>
+                            <option value="default_search">default_search</option>
                         </select>
                     </div>
                 </div>
@@ -666,6 +666,7 @@
             const selectedUDF = document.getElementById("${paragraphId}_search_select").value;
             const statement = '>data.property.search ${paragraphId} ' + topK + ' UDF' + selectedUDF + ' ' + keyword;
             const result = await executor.execute(statement);
+            console.debug('handleSearch executeInterpreter result:', result);
             searchedNodes = JSON.parse(result.msg[0].data);
             console.log('searchedNodes: ' + searchedNodes);
             await handleSearch();

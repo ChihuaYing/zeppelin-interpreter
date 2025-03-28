@@ -6,5 +6,6 @@ import lombok.Value;
 @Value
 public class SearchedNode {
   @NonNull String path;
+  @NonNull String description;
   double score;
 }

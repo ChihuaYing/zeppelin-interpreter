@@ -71,7 +71,7 @@ class UDFDefaultInsert(UDFBaseInsert):
         return inserted, failed
 
 if __name__ == "__main__":
-    from DefaultDescribe import UDFDefaultDescribe
+    from default.DefaultDescribe import UDFDefaultDescribe
     descriptor = UDFDefaultDescribe()
     paths = [
         "customer.c_custkey", "customer.c_name", "customer.c_address", "customer.c_nationkey", "customer.c_phone", "customer.c_acctbal", "customer.c_mktsegment", "customer.c_comment",
@@ -89,7 +89,7 @@ if __name__ == "__main__":
 
     descriptor_result[0] = [ name[1:-1] for name in descriptor_result[0]]
 
-    from  DefaultEncode import UDFDefaultEncode
+    from  default.DefaultEncode import UDFDefaultEncode
     encoder = UDFDefaultEncode(cache_path="embeddings")
     encoder_data = descriptor_result
     encoder_result = encoder.transform(encoder_data, [], {})

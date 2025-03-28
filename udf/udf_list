@@ -5,3 +5,4 @@ UDSF,default_encode,UDFDefaultEncode,default.DefaultEncode.py
 UDSF,default_insert,UDFDefaultInsert,default.DefaultInsert.py
 UDSF,default_fetch,UDFDefaultFetch,default.DefaultFetch.py
 UDSF,default_cluster,UDFDefaultCluster,default.DefaultCluster.py
+UDSF,default_search,UDFDefaultSearch,default.DefaultSearch.py

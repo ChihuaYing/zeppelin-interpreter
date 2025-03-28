@@ -1,7 +1,5 @@
 import asyncio
 import json
-from collections import defaultdict
-from typing import NamedTuple
 from tenacity import retry, stop_after_attempt, wait_incrementing
 
 import aiohttp
@@ -13,7 +11,6 @@ import pandas as pd
 from pymilvus import connections, Collection, FieldSchema, DataType, CollectionSchema
 from pymilvus.orm import utility
 from sentence_transformers import SentenceTransformer
-from sklearn.cluster import KMeans
 
 
 class LLMDao:
