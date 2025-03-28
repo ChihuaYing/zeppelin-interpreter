@@ -1,7 +1,7 @@
 import numpy as np
 
 from api.BaseSearch import UDFBaseSearch
-from default.DefaultUtilities import MILVUS_HOST, MILVUS_PORT, MILVUS_COLLECTION
+from default.DefaultUtilities import MILVUS_HOST, MILVUS_PORT, MILVUS_COLLECTION, LLMDao
 from pymilvus import connections, Collection
 
 class UDFDefaultSearch(UDFBaseSearch):
@@ -42,11 +42,27 @@ class UDFDefaultSearch(UDFBaseSearch):
         ]
 
     def describe_similarity(self, source_description: str, target_descriptions: list[str]) -> list[str]:
-        return [
-            f"{source_description} is similar to {target_description}"
+        prompts = [
+            f"""
+            Just output the similarity description, do not include any analysis or reasoning.
+            Please output the result in a single line sentence.
+            Describe the similarity between '
+            ```
+            {source_description}
+            ```
+            and 
+            ```
+            {target_description}
+            ```.
+
+            """
             for target_description in target_descriptions
         ]
+        return LLMDao().request(prompts)
 
+
+# Example usage, to run this file directly in udf directory:
+#   python -m default.DefaultSearch
 if __name__ == "__main__":
     from default.DefaultEncode import UDFDefaultEncode
 
@@ -61,6 +77,6 @@ if __name__ == "__main__":
     searched_data = encoder_result
     searched_result = searcher.transform(searched_data, [], {
         "pattern": "*".encode(),
-        "limit": 10,
+        "topk": 10,
     })
     print(searched_result)
