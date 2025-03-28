@@ -10,7 +10,7 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.velocity.VelocityContext;
-import org.apache.zeppelin.iginx.interpreter.IginxDao;
+import org.apache.zeppelin.iginx.interpreter.AbstractExtensionInterpreter;
 import org.apache.zeppelin.iginx.interpreter.dataproperty.network.NetworkService;
 import org.apache.zeppelin.iginx.util.TableUtil;
 import org.apache.zeppelin.interpreter.InterpreterContext;
@@ -18,7 +18,7 @@ import org.apache.zeppelin.interpreter.InterpreterResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class DataPropertyInterpreter {
+public class DataPropertyInterpreter extends AbstractExtensionInterpreter {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DataPropertyInterpreter.class);
   private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -27,12 +27,11 @@ public class DataPropertyInterpreter {
   private static final String INTERNAL_STATEMENT_PREFIX = ">data.property";
   private static final String UDF = "UDF";
 
-  private final IginxDao iginx;
-
   public DataPropertyInterpreter(Session session, String milvusHost, int milvusPort) {
-    this.iginx = IginxDao.getInstance(session, milvusHost, milvusPort);
+    super(session, milvusHost, milvusPort);
   }
 
+  @Override
   public boolean canInterpret(String sql) {
     String cmd = sql.trim().split(" ")[0];
     switch (cmd) {
@@ -47,6 +46,7 @@ public class DataPropertyInterpreter {
     }
   }
 
+  @Override
   public InterpreterResult interpret(String statement, InterpreterContext context) {
     // 截取第一个空格之前的内容和之后的内容
     String[] strings = statement.trim().split(" ");

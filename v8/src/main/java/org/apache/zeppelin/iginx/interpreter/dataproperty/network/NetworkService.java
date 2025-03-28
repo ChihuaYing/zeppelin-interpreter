@@ -71,7 +71,7 @@ public class NetworkService {
 
     velocityContext.put("nodeList", nodeString);
     velocityContext.put("relationList", relationString);
-    return VelocityUtil.generate("templates/g6-data-property.vm", velocityContext);
+    return VelocityUtil.generate("templates/data-property.vm", velocityContext);
   }
 
   public String handleNodeClick(String nodeId, String function) {

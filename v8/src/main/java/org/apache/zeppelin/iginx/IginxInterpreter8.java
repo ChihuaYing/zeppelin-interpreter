@@ -30,6 +30,7 @@ import java.util.zip.ZipOutputStream;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.zeppelin.iginx.interpreter.AbstractExtensionInterpreter;
 import org.apache.zeppelin.iginx.interpreter.dataproperty.DataPropertyInterpreter;
 import org.apache.zeppelin.iginx.interpreter.udfgenerator.UdfGeneratorInterpreter;
 import org.apache.zeppelin.iginx.util.*;
@@ -123,8 +124,8 @@ public class IginxInterpreter8 extends Interpreter {
   private Exception exception;
 
   private SimpleFileServer fileServer;
-  private DataPropertyInterpreter dataPropertyInterpreter;
-  private UdfGeneratorInterpreter udfGeneratorInterpreter;
+  private AbstractExtensionInterpreter dataPropertyInterpreter;
+  private AbstractExtensionInterpreter udfGeneratorInterpreter;
 
   // 返回结果为单个表格的语句
   private static final List<SqlType> singleFormSqlType =
@@ -317,8 +318,8 @@ public class IginxInterpreter8 extends Interpreter {
       if (dataPropertyInterpreter.canInterpret(sql)) {
         return dataPropertyInterpreter.interpret(sql, context);
       }
-      if (udfGeneratorInterpreter.canInterpreter(sql)) {
-        return udfGeneratorInterpreter.interpret(sql);
+      if (udfGeneratorInterpreter.canInterpret(sql)) {
+        return udfGeneratorInterpreter.interpret(sql, context);
       }
 
       SessionExecuteSqlResult sqlResult = session.executeSql(sql);
