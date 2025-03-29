@@ -28,7 +28,7 @@ public class IginxDao {
   private final Session session;
   private final String milvusHost;
   private final int milvusPort;
-  private static IginxDao instance;
+  private static volatile IginxDao instance;
 
   public IginxDao(Session session, String milvusHost, int milvusPort) {
     this.session = session;
@@ -36,10 +36,13 @@ public class IginxDao {
     this.milvusPort = milvusPort;
   }
 
-  public static synchronized IginxDao getInstance(
-      Session session, String milvusHost, int milvusPort) {
+  public static IginxDao getInstance(Session session, String milvusHost, int milvusPort) {
     if (instance == null) {
-      instance = new IginxDao(session, milvusHost, milvusPort);
+      synchronized (IginxDao.class) {
+        if (instance == null) {
+          instance = new IginxDao(session, milvusHost, milvusPort);
+        }
+      }
     }
     return instance;
   }
@@ -91,8 +94,6 @@ public class IginxDao {
 
   public List<SearchedNode> search(
       String iginxPattern, String keywords, String topK, String function) {
-    // todo: 把 topK 放到 UDF 中
-    // todo: 目前 score 值是直接放进去的，后续改为从 UDF 中获得
     Preconditions.checkArgument(StringUtils.isNotBlank(iginxPattern));
     Preconditions.checkArgument(StringUtils.isNotBlank(topK));
     Preconditions.checkArgument(StringUtils.isNotBlank(keywords));
@@ -161,7 +162,6 @@ public class IginxDao {
   }
 
   public GeneratedResult generateUdf(String description, String type, String function) {
-    LOGGER.info("generateUdf");
     Preconditions.checkNotNull(description);
     Preconditions.checkNotNull(type);
     Preconditions.checkArgument(StringUtils.isNotBlank(function));

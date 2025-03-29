@@ -526,12 +526,41 @@
 
                 graph.refreshLayout()
 
+                refreshPreviousPolylineRelation();
                 // 处理 add 中的 links
                 if (result.add.links) {
                     handleRelation(result.add.links);
                 }
                 graph.fitView();
             }
+        }
+
+        function refreshPreviousPolylineRelation() {
+            const edges = graph.getEdges();
+            edges.forEach((edge, index) => {
+                const model = edge.getModel();
+                if (model.label !== undefined) {
+                    if (nodeMap[model.source] && nodeMap[model.target] && nodeMap[model.source].depth === nodeMap[model.target].depth) {
+                        const sourceNode = graph.findById(model.source).getModel();
+                        const targetNode = graph.findById(model.target).getModel();
+                        const dy = targetNode.y - sourceNode.y;
+                        const distance = Math.abs(dy);
+                        const edgeConfig = {};
+                        if (distance < 100) {
+                            edgeConfig.shape = 'quadratic';
+                            edgeConfig.curveOffset = Math.max(50, Math.min(distance * 0.5, 300)) * (index % 2 === 0 ? 1 : -1);
+                        } else {
+                            edgeConfig.shape = 'polyline';
+                            edgeConfig.controlPoints = [
+                                { x: sourceNode.x + distance/5, y: sourceNode.y + dy/5 },
+                                { x: sourceNode.x + distance/4, y: targetNode.y - dy/2 },
+                                { x: sourceNode.x + distance/5, y: targetNode.y - dy/5 },
+                            ];
+                        }
+                        graph.updateItem(edge, edgeConfig);
+                    }
+                }
+            });
         }
 
         function handleRelation(links) {
