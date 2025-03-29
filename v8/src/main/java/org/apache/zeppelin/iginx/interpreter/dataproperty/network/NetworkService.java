@@ -55,7 +55,8 @@ public class NetworkService {
       LOGGER.info("after merge, the size is：{}", root.getChildren().size());
     }
     JSONArray nodes = getNodesData(root);
-    String nodeString = nodes.toJSONString().replace("'", "\\'");
+    String nodeString =
+        nodes.toJSONString().replace("'", "\\'").replace("\\\"", "").replace("\\n", " ");
     LOGGER.info("the nodeString is {}", nodeString);
 
     String relationString = "";
