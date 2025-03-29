@@ -1,11 +1,21 @@
 from abc import abstractmethod
 
 class UDFBaseDescribe:
-    def __init__(self):
-        pass
+    """
+    UDFBaseDescribe is an abstract base class that defines the interface for describing leaf paths with their types.
+    """
 
     @abstractmethod
     def describe(self, leaf_paths_with_type: dict[str, str]) -> dict[str, str]:
+        """
+        Abstract method to describe tree paths with their types.
+
+        Args:
+            leaf_paths_with_type (dict[str, str]): A dictionary where keys are leaf node paths and values are their types.
+
+        Returns:
+            dict[str, str]: A dictionary where keys are paths (include inner node path and leaf node path) and values are their descriptions.
+        """
         pass
 
     def transform(self, data, args, kvargs):

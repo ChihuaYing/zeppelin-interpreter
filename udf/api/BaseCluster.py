@@ -4,14 +4,36 @@ from typing import NamedTuple
 import numpy as np
 
 class Node(NamedTuple):
+    """
+    Represents a tree node in the clustering hierarchy.
+
+    Attributes:
+        path (str): The path associated with the node.
+        description (str): A description of the node.
+        embedding (np.ndarray): The embedding vector representing the node.
+        children (list[Node]): A list of child nodes.
+    """
     path: str
     description: str
     embedding: np.ndarray
     children: list['Node'] = []
 
 class UDFBaseCluster:
+    """
+    Abstract base class for clustering algorithms.
+    """
     @abstractmethod
     def cluster(self, forest: list[Node], target: int) -> list[Node]:
+        """
+        Abstract method to perform clustering on a list of tree.
+
+        Args:
+            forest (list[Node]): The list of tree to be clustered.
+            target (int): The tree number of clusters in the hierarchy.
+
+        Returns:
+            list[Node]: The list of clustered nodes in the hierarchy.
+        """
         pass
 
     def _generate_result(self, nodes: list[Node], parent_path: list[str], results: list[list]):

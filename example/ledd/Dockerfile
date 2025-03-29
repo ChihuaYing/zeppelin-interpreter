@@ -20,76 +20,12 @@ EOT
 
 WORKDIR /app
 
-ADD https://github.com/IGinX-THU/IGinX/releases/download/v0.8.0/IGinX-Client-0.8.0.tar.gz ./
 ADD https://github.com/IGinX-THU/IGinX/releases/download/v0.8.0/IGinX-Server-0.8.0.tar.gz ./
 
-RUN <<EOT bash
-tar -xzvf IGinX-Client-0.8.0.tar.gz
-tar -xzvf IGinX-Server-0.8.0.tar.gz
-rm *.tar.gz
-sed -i 's/enableEnvParameter=.*/enableEnvParameter=true/g' conf/config.properties
-sed -i 's/needInitBasicUDFFunctions=.*/needInitBasicUDFFunctions=true/g' conf/config.properties
-sed -i 's/enableRestService=.*/enableRestService=false/g' conf/config.properties
-EOT
+RUN tar -xzvf IGinX-Server-0.8.0.tar.gz \
+    && rm *.tar.gz \
+    && sed -i 's/enableEnvParameter=.*/enableEnvParameter=true/g' conf/config.properties \
+    && sed -i 's/needInitBasicUDFFunctions=.*/needInitBasicUDFFunctions=true/g' conf/config.properties \
+    && sed -i 's/enableRestService=.*/enableRestService=false/g' conf/config.properties
 
-COPY <<EOF temp/ScheduledEmbedding.yml
-taskList:
-  - taskType: "iginx"
-    timeout: 10000000
-    sqlList:
-      - |
-        SELECT default_insert(*)
-        FROM (
-            SELECT
-                `default_encode(path)` as path,
-                `default_encode(type)` as type,
-                `default_encode(description)` as description,
-                `default_encode(embedding)` as embedding
-            FROM(
-                SELECT default_encode(*)
-                FROM (
-                    SELECT
-                        `default_describe(path)` as path,
-                        `default_describe(type)` as type,
-                        `default_describe(description)` as description
-                    FROM (
-                        SELECT default_describe(*)
-                        FROM (show columns)
-                    )
-                )
-            )
-        );
-schedule: "every 360000 second"
-exportType: "none"
-EOF
-
-COPY <<EOF iginx.sh
-#!/bin/bash
-
-function notify() {
-    echo -e "\\033[35m""\$1""\\033[0m"
-}
-
-if [ ! -f "temp/iginx.out" ]; then
-    {
-      notify "Waiting for IGinX to be in service"
-      until grep -q "IGinX is now in service" temp/iginx.out
-      do
-          sleep 1
-      done
-
-      notify "Loading Schema Pile"
-      java -jar temp/schemapile-loader.jar
-
-      notify "Registering the transform job"
-      sbin/start_cli.sh -e "COMMIT TRANSFORM JOB 'temp/ScheduledEmbedding.yml';"
-    }&
-fi
-
-notify "Starting IGinX"
-sbin/start_iginx.sh | tee temp/iginx.out
-EOF
-
-RUN chmod +x iginx.sh
-
-CMD ["./iginx.sh"]
+CMD ["sbin/start_iginx.sh"]

@@ -3,8 +3,24 @@ from abc import abstractmethod
 import numpy as np
 
 class UDFBaseEncode:
+    """
+    Base class for encoding text descriptions into numeric embeddings.
+    Derived classes are expected to implement a specialized `encode` method
+    that leverages a specific embedding model.
+    """
+
     @abstractmethod
     def encode(self, descriptions: list[str]) -> list[np.ndarray]:
+        """
+        Encodes a list of text descriptions into numeric embeddings.
+
+        Args:
+            descriptions (list[str]): A list of text strings to encode.
+
+        Returns:
+            list[np.ndarray]: A list of numeric embedding arrays. Each array
+            represents the embedding of the corresponding string in `descriptions`.
+        """
         pass
 
     def transform(self, data, args, kvargs):

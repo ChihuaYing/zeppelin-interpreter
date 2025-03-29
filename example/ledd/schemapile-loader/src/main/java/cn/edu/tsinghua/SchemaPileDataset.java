@@ -19,8 +19,8 @@ import me.tongfei.progressbar.ProgressBarBuilder;
 public class SchemaPileDataset {
 
   public static final String FILENAME = "schemapile-perm.json.gz";
-  public static final String IGINX_HOST = "127.0.0.1";
-  public static final int IGINX_PORT = 6888;
+  public static final String IGINX_HOST = System.getProperty("iginx.host", "127.0.0.1");
+  public static final int IGINX_PORT = Integer.getInteger("iginx.port", 6888);
   public static final int BATCH_SIZE = 1000;
 
   protected static final List<Session> allSessions = new ArrayList<>();

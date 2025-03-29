@@ -63,10 +63,7 @@ services:
       - ./model_cache:/root/.cache/huggingface/hub
       - ./cache:/app/cache
       - ./logs/iginx:/app/logs
-      - ./schemapile-loader/target/schemapile-loader-0.7.2-shaded.jar:/app/temp/schemapile-loader.jar
       - ../../udf/udf_list:/app/udf_funcs/udf_list
-      - ../../udf/AnalyseRelation.py:/app/udf_funcs/python_scripts/AnalyseRelation.py
-      - ../../udf/SearchEmbedding.py:/app/udf_funcs/python_scripts/SearchEmbedding.py
       - ../../udf/api:/app/udf_funcs/python_scripts/api
       - ../../udf/default:/app/udf_funcs/python_scripts/default
     environment:
@@ -75,10 +72,22 @@ services:
       HF_DATASETS_OFFLINE: 1
       HF_HUB_OFFLINE: 1
       MILVUS_HOST: milvus
+      LLM_CHAT_COMPLETIONS_URL: https://open.bigmodel.cn/api/paas/v4/chat/completions
+      LLM_CHAT_COMPLETIONS_KEY: 10bc3e2b57b34fc6803a2275c82d9a01.Z2i5U5D29w8PPws7
+      LLM_CHAT_COMPLETIONS_MODEL: GLM-4-Plus
     links:
       - zk
       - iotdb
       - milvus
+
+  iginx-init:
+    build:
+      dockerfile: Dockerfile.init
+    environment:
+      IGINX_HOST: iginx
+    links:
+      - iginx
+    restart: on-failure
 
   zeppelin:
     image: apache/zeppelin:0.8.2
@@ -87,7 +96,7 @@ services:
     volumes:
       - ../../v8/target/zeppelin8-iginx-0.7.2-shaded.jar:/zeppelin/interpreter-iginx-only/iginx/zeppelin8-iginx-shaded.jar
       - ./notebook:/zeppelin/notebook
-      - ./logs/zepplin:/zeppelin/logs
+#      - ./logs/zepplin:/zeppelin/logs
       - ./resources/interpreter.json:/zeppelin/conf/interpreter.json
     environment:
       ZEPPELIN_ADDR: 0.0.0.0

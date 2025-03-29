@@ -17,6 +17,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.zeppelin.iginx.interpreter.dataproperty.entry.ClusterNode;
 import org.apache.zeppelin.iginx.interpreter.dataproperty.entry.Relation;
 import org.apache.zeppelin.iginx.interpreter.dataproperty.entry.SearchedNode;
+import org.apache.zeppelin.iginx.interpreter.udfgenerator.GeneratedResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -159,7 +160,7 @@ public class IginxDao {
     return relations;
   }
 
-  public String generateUdf(String description, String type, String function) {
+  public GeneratedResult generateUdf(String description, String type, String function) {
     LOGGER.info("generateUdf");
     Preconditions.checkNotNull(description);
     Preconditions.checkNotNull(type);
@@ -167,11 +168,12 @@ public class IginxDao {
 
     String sql =
         String.format(
-            "select `%s(udf)`"
-                + " from (select %<s(*, type='%s', description='%s') from (show columns ###));",
-            function, type, description);
+            "select `%s(prompt)`, `%<s(udf)` from (select %<s(*) from (select '%s' as type, '%s' as description));",
+            function, type.replace("'", "\\'"), description.replace("'", "\\'"));
     List<List<Object>> values = executeSql(sql);
-    return new String((byte[]) values.get(0).get(0), StandardCharsets.UTF_8);
+    return new GeneratedResult(
+        new String((byte[]) values.get(0).get(0), StandardCharsets.UTF_8),
+        new String((byte[]) values.get(0).get(1), StandardCharsets.UTF_8));
   }
 
   private List<List<Object>> executeSql(String sql) {

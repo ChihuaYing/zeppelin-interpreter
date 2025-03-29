@@ -2,6 +2,8 @@ package org.apache.zeppelin.iginx.interpreter.udfgenerator;
 
 import cn.edu.tsinghua.iginx.session.Session;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.velocity.VelocityContext;
 import org.apache.zeppelin.iginx.interpreter.AbstractExtensionInterpreter;
@@ -13,7 +15,21 @@ import org.slf4j.LoggerFactory;
 
 public class UdfGeneratorInterpreter extends AbstractExtensionInterpreter {
   private static final Logger LOGGER = LoggerFactory.getLogger(UdfGeneratorInterpreter.class);
-  private static final String DEFAULT_GENERATE_UDF_FUNCTION = "generate_udf";
+  private static final String DEFAULT_GENERATE_UDF_FUNCTION = "default_generate";
+
+  private static final Map<String, String> CMD_MAP =
+      new HashMap<String, String>() {
+        {
+          put(">generate.udf.cluster", "Cluster");
+          put(">generate.udf.describe", "Describe");
+          put(">generate.udf.encode", "Encode");
+          put(">generate.udf.fetch", "Fetch");
+          put(">generate.udf.generate", "Generate");
+          put(">generate.udf.insert", "Insert");
+          put(">generate.udf.relate", "Relate");
+          put(">generate.udf.search", "Search");
+        }
+      };
 
   public UdfGeneratorInterpreter(Session session, String milvusHost, int milvusPort) {
     super(session, milvusHost, milvusPort);
@@ -22,14 +38,7 @@ public class UdfGeneratorInterpreter extends AbstractExtensionInterpreter {
   @Override
   public boolean canInterpret(String sql) {
     String cmd = sql.trim().split(" ")[0];
-    switch (cmd) {
-      case ">generate.udf.encode":
-      case ">generate.udf.insert":
-      case ">generate.udf.describe":
-        return true;
-      default:
-        return false;
-    }
+    return CMD_MAP.containsKey(cmd);
   }
 
   @Override
@@ -40,16 +49,11 @@ public class UdfGeneratorInterpreter extends AbstractExtensionInterpreter {
     String[] args = Arrays.copyOfRange(strings, 1, strings.length);
 
     try {
-      switch (cmd) {
-        case ">generate.udf.encode":
-          return displayUdfGenerator(args, "Encode");
-        case ">generate.udf.insert":
-          return displayUdfGenerator(args, "Insert");
-        case ">generate.udf.describe":
-          return displayUdfGenerator(args, "Describe");
-        default:
-          throw new IllegalArgumentException("Invalid command: " + cmd);
+      String udfType = CMD_MAP.get(cmd);
+      if (udfType == null) {
+        throw new IllegalArgumentException("Invalid command: " + cmd);
       }
+      return displayUdfGenerator(args, udfType);
     } catch (Exception e) {
       return new InterpreterResult(InterpreterResult.Code.ERROR, ExceptionUtils.getStackTrace(e));
     }
@@ -58,13 +62,11 @@ public class UdfGeneratorInterpreter extends AbstractExtensionInterpreter {
   private InterpreterResult displayUdfGenerator(String[] args, String type) {
     try {
       String description = String.join(" ", args);
-      String udf =
-          iginx
-              .generateUdf(description, type, DEFAULT_GENERATE_UDF_FUNCTION)
-              .replace("```python", "")
-              .replace("```", "")
-              .trim();
+      GeneratedResult result = iginx.generateUdf(description, type, DEFAULT_GENERATE_UDF_FUNCTION);
+      String prompt = result.getPrompt();
+      String udf = result.getCode().replace("```python", "").replace("```", "").trim();
       VelocityContext velocityContext = new VelocityContext();
+      velocityContext.put("prompt", prompt);
       velocityContext.put("python_text", udf);
       String html = VelocityUtil.generate("templates/udf-generator.vm", velocityContext);
 

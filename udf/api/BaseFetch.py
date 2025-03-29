@@ -3,8 +3,25 @@ from abc import abstractmethod
 import numpy as np
 
 class UDFBaseFetch:
+    """
+    Base class for fetching data based on a pattern and level.
+    Derived classes should override the fetch() method to query and
+    retrieve records, including path, type, description, and embeddings.
+    """
+
     @abstractmethod
     def fetch(self, pattern: str, level:int) -> list[tuple[str,str,str,np.ndarray]]:
+        """
+        Retrieves records matching a pattern and level, returning each record's
+        path, type, description, and numeric embedding for further use.
+
+        Args:
+            pattern (str): A search pattern to match path (separated by '.'), support * as wildcard.
+            level (int): The depth level to query, min level is 0.
+
+        Returns:
+            list[tuple[str, str, str, np.ndarray]]: Fetched records.
+        """
         pass
 
     def transform(self, data, args, kvargs):
