@@ -13,8 +13,8 @@ MILVUS_COLLECTION = os.getenv("MILVUS_COLLECTION", "embeddings")
 class LLMDao:
     def __init__(self):
         self.url = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
-        self.key = "204a3ea9bf39f18dd9bf32c71ecbb607.mITgz6pgV7Hzj27A"
-        self.model = "GLM-4-Flash"
+        self.key = "10bc3e2b57b34fc6803a2275c82d9a01.Z2i5U5D29w8PPws7"
+        self.model = "GLM-4-Plus"
 
     @retry(stop=stop_after_attempt(6), wait=wait_incrementing(start=1, increment=1))
     async def _fetch(self, session, prompt: str, semaphore: asyncio.Semaphore, pbar: tqdm.tqdm) -> str:
