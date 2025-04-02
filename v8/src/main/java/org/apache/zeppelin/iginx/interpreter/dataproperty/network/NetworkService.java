@@ -28,6 +28,7 @@ public class NetworkService {
   private IginxDao iginx;
   private final String pattern;
   private static final Map<String, String> embeddingId2NetworkId = new HashMap<>();
+  private static final Map<String, String> originalTopNodeName2mergeRoot = new HashMap<>();
   private static final String DEFAULT_RELATION_FUNCTION = "analyse_relation";
 
   public NetworkService(
@@ -81,7 +82,7 @@ public class NetworkService {
 
   public String handleNodeClick(String nodeId, String function) {
     long startTime = System.currentTimeMillis();
-    LOGGER.info("handleNodeClick");
+    LOGGER.info("handleNodeClick: {}", nodeId);
     NetworkTreeNode node = getNodeById(nodeId);
     if (node == null) {
       LOGGER.error("Node not found for id: {}", nodeId);
@@ -147,7 +148,7 @@ public class NetworkService {
       return;
     }
     Multimap<ClusterNode, String> groupingMap =
-        iginx.getGroupingOf(pattern, "default_fetch_embedding", "default_cluster", 18);
+        iginx.getGroupingOf(pattern, "default_fetch_embedding", "default_cluster", 5);
 
     Map<String, List<NetworkTreeNode>> labelToNodesMap = new HashMap<>();
     for (Map.Entry<ClusterNode, Collection<String>> group : groupingMap.asMap().entrySet()) {
@@ -185,6 +186,7 @@ public class NetworkService {
       }
 
       for (NetworkTreeNode child : children) {
+        originalTopNodeName2mergeRoot.put(child.getName(), cluster);
         parent.getChildren().put(child.getName(), child);
         updateNodes(child, cluster);
       }
@@ -219,6 +221,7 @@ public class NetworkService {
         if (node.getMergedRoot() != null) child.setMergedRoot(node.getMergedRoot());
         child.setShown(true);
         node.getChildren().put(child.getName(), child);
+        embeddingId2NetworkId.put(child.getEmbeddingId(), child.getNetworkId());
       }
     }
 
@@ -331,7 +334,8 @@ public class NetworkService {
       String path = pathWithScore.getPath();
       String description = pathWithScore.getDescription();
       double score = pathWithScore.getScore();
-      String networkId = embeddingId2NetworkId.get(path);
+      //      String networkId = embeddingId2NetworkId.get(path);
+      String networkId = getNetworkIdByEmbeddingId(path);
       if (networkId != null) {
         JSONObject searchNodeJson = new JSONObject();
         searchNodeJson.put("id", networkId);
@@ -342,5 +346,20 @@ public class NetworkService {
       }
     }
     return searchResultJson.toString();
+  }
+
+  private String getNetworkIdByEmbeddingId(String embeddingId) {
+    LOGGER.info("getNetworkIdByEmbeddingId: embeddingId is {}", embeddingId);
+    if (!needMerge) {
+      return "rootId." + embeddingId;
+    }
+    if (embeddingId2NetworkId.containsKey(embeddingId)) {
+      return embeddingId2NetworkId.get(embeddingId);
+    }
+    String[] parts = embeddingId.split("\\.", 2);
+    String mergedRoot = originalTopNodeName2mergeRoot.get(parts[0]);
+    String networkId = parts[0] + "." + mergedRoot + "." + parts[1];
+    embeddingId2NetworkId.put(embeddingId, networkId);
+    return networkId;
   }
 }

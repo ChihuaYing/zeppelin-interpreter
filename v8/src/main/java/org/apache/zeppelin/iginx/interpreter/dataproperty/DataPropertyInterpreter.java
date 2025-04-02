@@ -129,7 +129,7 @@ public class DataPropertyInterpreter extends AbstractExtensionInterpreter {
     Preconditions.checkNotNull(networkService, "Network service not found: " + paragraphId);
 
     String msg = networkService.handleSearch(keywords, topK, function);
-    LOGGER.info("msg is {}", msg);
+    LOGGER.info("searchDataProperty: msg is {}", msg);
     return new InterpreterResult(InterpreterResult.Code.SUCCESS, InterpreterResult.Type.TEXT, msg);
   }
 }
