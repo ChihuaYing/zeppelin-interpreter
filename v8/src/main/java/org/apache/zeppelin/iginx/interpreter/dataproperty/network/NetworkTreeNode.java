@@ -87,6 +87,10 @@ public class NetworkTreeNode {
     return isMergedNode;
   }
 
+  public String getMergedRoot() {
+    return mergedRoot;
+  }
+
   public void setMergedNode(boolean mergedNode) {
     isMergedNode = mergedNode;
   }

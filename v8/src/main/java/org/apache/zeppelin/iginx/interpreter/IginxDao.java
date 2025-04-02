@@ -69,16 +69,16 @@ public class IginxDao {
     Preconditions.checkNotNull(parentPath);
 
     String sql =
-            String.format("select %s(*, path='%s') from (show columns ###));", function, parentPath);
+        String.format("select %s(*, path='%s') from (show columns ###);", function, parentPath);
     LOGGER.info("sql is: {}", sql);
     List<List<Object>> values = executeSql(sql);
 
     List<NetworkTreeNode> nodes = new ArrayList<>();
-    for (List<Object> row: values) {
-      String path = new String((byte[]) row.get(0), StandardCharsets.UTF_8);
+    for (List<Object> row : values) {
+      long level = (long) row.get(0);
       String name = new String((byte[]) row.get(1), StandardCharsets.UTF_8);
-      int level = (int) row.get(2);
-      nodes.add(new NetworkTreeNode(path, name, level));
+      String path = new String((byte[]) row.get(2), StandardCharsets.UTF_8);
+      nodes.add(new NetworkTreeNode(path, name, (int) level));
     }
     return nodes;
   }

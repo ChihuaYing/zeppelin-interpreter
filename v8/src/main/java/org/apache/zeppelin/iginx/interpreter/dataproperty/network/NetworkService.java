@@ -48,10 +48,11 @@ public class NetworkService {
   public String initNetwork(VelocityContext velocityContext) {
     LOGGER.info("initNetwork: {} {} {}", needMerge, needRelation, paragraphId);
     root = new NetworkTreeNode("rootId", "Data Asset", 0);
-//    buildForest(root, columnPath);
+    //    buildForest(root, columnPath);
     List<NetworkTreeNode> topNodes = iginx.getNodeOf(root.getId(), "default_fetch_node");
-
-    // todo: 取消 buildForest，改为调用 UDF 从 neo4j 中获取第一层结点
+    for (NetworkTreeNode node : topNodes) {
+      root.getChildren().put(node.getName(), node);
+    }
     if (needMerge) {
       LOGGER.info("before merge, the size is：{}", root.getChildren().size());
       mergeForest(root);
@@ -211,12 +212,22 @@ public class NetworkService {
   private void expandNode(NetworkTreeNode node, JSONObject addMap, String function) {
     JSONArray nodes = new JSONArray();
     JSONArray links = new JSONArray();
+
+    if (node.getChildren().isEmpty()) {
+      List<NetworkTreeNode> childrenNodes = iginx.getNodeOf(node.getId(), "default_fetch_node");
+      for (NetworkTreeNode child : childrenNodes) {
+        if (node.getMergedRoot() != null) child.setMergedRoot(node.getMergedRoot());
+        child.setShown(true);
+        node.getChildren().put(child.getName(), child);
+      }
+    }
+
     if (needRelation) {
       List<Relation> addRelations = calculateNodeRelation(node, function);
       links = getRelationLinks(addRelations);
     }
     nodes = getNodesData(node);
-    // todo: 改为 先调用 UDF 从 neo4j 中获取结点，然后再计算 relation
+
     addMap.put("nodes", nodes);
     addMap.put("links", links);
   }

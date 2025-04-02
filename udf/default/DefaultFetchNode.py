@@ -5,7 +5,7 @@ from api.BaseFetchNode import UDFBaseFetchNode
 from default.DefaultUtilities import NEO4J_HOST, NEO4J_PORT, NEO4J_USERNAME, NEO4J_PASSWORD
 
 
-class DefaultBaseFetchNode(UDFBaseFetchNode):
+class UDFDefaultFetchNode(UDFBaseFetchNode):
 
     def __init__(self, neo4j_host=NEO4J_HOST, neo4j_port=NEO4J_PORT, neo4j_username=NEO4J_USERNAME, neo4j_password=NEO4J_PASSWORD):
         self.neo4j_url = f"bolt://{neo4j_host}:{neo4j_port}"
@@ -15,6 +15,7 @@ class DefaultBaseFetchNode(UDFBaseFetchNode):
         self.driver.close()
 
     def fetch(self, parent_path: str) -> List[Tuple[str, str, int]]:
+        print(f"fetching parent_path: {parent_path}")
         query = (
             "MATCH (parent:Node)-[:CONTAIN]->(child:Node) "
             "WHERE parent.path = $parentPath "
@@ -33,7 +34,7 @@ class DefaultBaseFetchNode(UDFBaseFetchNode):
 
 
 if __name__ == "__main__":
-    fetcher = DefaultBaseFetchNode()
+    fetcher = UDFDefaultFetchNode()
     test_parent_path = "rootId"
     try:
         children = fetcher.fetch(test_parent_path)

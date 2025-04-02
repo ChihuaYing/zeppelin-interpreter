@@ -5,7 +5,7 @@ from default.DefaultUtilities import MILVUS_HOST, MILVUS_PORT, MILVUS_COLLECTION
 from pymilvus import connections, Collection
 
 
-class UDFDefaultFetch(UDFBaseFetchEmbedding):
+class UDFDefaultFetchEmbedding(UDFBaseFetchEmbedding):
 
     def __init__(self, milvus_host=MILVUS_HOST, milvus_port=MILVUS_PORT, collection_name=MILVUS_COLLECTION):
         self.milvus_host = milvus_host
