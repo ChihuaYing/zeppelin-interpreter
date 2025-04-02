@@ -17,6 +17,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.zeppelin.iginx.interpreter.dataproperty.entry.ClusterNode;
 import org.apache.zeppelin.iginx.interpreter.dataproperty.entry.Relation;
 import org.apache.zeppelin.iginx.interpreter.dataproperty.entry.SearchedNode;
+import org.apache.zeppelin.iginx.interpreter.dataproperty.network.NetworkTreeNode;
 import org.apache.zeppelin.iginx.interpreter.udfgenerator.GeneratedResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,6 +65,24 @@ public class IginxDao {
     return columns;
   }
 
+  public List<NetworkTreeNode> getNodeOf(String parentPath, String function) {
+    Preconditions.checkNotNull(parentPath);
+
+    String sql =
+            String.format("select %s(*, path='%s') from (show columns ###));", function, parentPath);
+    LOGGER.info("sql is: {}", sql);
+    List<List<Object>> values = executeSql(sql);
+
+    List<NetworkTreeNode> nodes = new ArrayList<>();
+    for (List<Object> row: values) {
+      String path = new String((byte[]) row.get(0), StandardCharsets.UTF_8);
+      String name = new String((byte[]) row.get(1), StandardCharsets.UTF_8);
+      int level = (int) row.get(2);
+      nodes.add(new NetworkTreeNode(path, name, level));
+    }
+    return nodes;
+  }
+
   public Multimap<ClusterNode, String> getGroupingOf(
       String iginxPattern, String fetchFunction, String clusterFunction, int target) {
     Preconditions.checkArgument(StringUtils.isNotBlank(iginxPattern));
@@ -73,7 +92,7 @@ public class IginxDao {
     String fetchSql =
         String.format(
             "select `%s(path)` as path, `%<s(description)` as description, `%<s(embedding)` as embedding"
-                + " from (select %<s(*, pattern='%s',level=1) from (show columns ###))",
+                + " from (select %<s(*, pattern='%s', level=1) from (show columns ###))",
             fetchFunction, iginxPattern);
 
     String sql =
@@ -175,8 +194,6 @@ public class IginxDao {
         new String((byte[]) values.get(0).get(0), StandardCharsets.UTF_8),
         new String((byte[]) values.get(0).get(1), StandardCharsets.UTF_8));
   }
-
-  // todo: 添加调用 UDF 从 neo4j 获取下一层结点的逻辑  返回 List<NetworkNode>
 
   private List<List<Object>> executeSql(String sql) {
     SessionExecuteSqlResult sqlResult;

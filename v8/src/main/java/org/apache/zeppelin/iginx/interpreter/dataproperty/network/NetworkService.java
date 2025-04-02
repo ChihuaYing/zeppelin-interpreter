@@ -48,7 +48,9 @@ public class NetworkService {
   public String initNetwork(VelocityContext velocityContext) {
     LOGGER.info("initNetwork: {} {} {}", needMerge, needRelation, paragraphId);
     root = new NetworkTreeNode("rootId", "Data Asset", 0);
-    buildForest(root, columnPath);
+//    buildForest(root, columnPath);
+    List<NetworkTreeNode> topNodes = iginx.getNodeOf(root.getId(), "default_fetch_node");
+
     // todo: 取消 buildForest，改为调用 UDF 从 neo4j 中获取第一层结点
     if (needMerge) {
       LOGGER.info("before merge, the size is：{}", root.getChildren().size());

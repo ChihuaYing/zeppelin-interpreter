@@ -5,7 +5,7 @@ import numpy as np
 
 class UDFBaseFetchEmbedding:
     """
-    Base class for fetching embedding based on a pattern and level.
+    Base class for fetching records based on a pattern and level from milvus.
     Derived classes should override the fetch() method to query and
     retrieve records, including path, type, description, and embeddings.
     """
