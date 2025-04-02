@@ -1,11 +1,5 @@
-import asyncio
 from collections import defaultdict
-from tenacity import retry, stop_after_attempt, wait_incrementing
-
-import aiohttp
-import tqdm
 import numpy as np
-
 from sklearn.cluster import KMeans
 
 from api.BaseCluster import UDFBaseCluster, Node
@@ -83,7 +77,7 @@ class UDFDefaultCluster(UDFBaseCluster):
 
 if __name__ == "__main__":
     # Test the cluster algorithm
-    from DefaultFetch import UDFDefaultFetch
+    from DefaultFetchEmbedding import UDFDefaultFetch
     fetched = UDFDefaultFetch().transform([[],[]],[],{"pattern": "*".encode(), "level": "0".encode()})
     print(fetched)
 

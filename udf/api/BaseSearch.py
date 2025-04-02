@@ -2,13 +2,14 @@ from abc import abstractmethod
 
 import numpy as np
 
+
 class UDFBaseSearch:
     @abstractmethod
     def search(self, pattern: str, embedding: np.ndarray, limit: int) -> list[tuple[str, str, str, float]]:
         pass
 
     @abstractmethod
-    def describe_similarity(self, source_description: str, target_descriptions: list[str]) ->  list[str]:
+    def describe_similarity(self, source_description: str, target_descriptions: list[str]) -> list[str]:
         pass
 
     def transform(self, data, args, kvargs):
@@ -39,9 +40,9 @@ class UDFBaseSearch:
         similarities = self.describe_similarity(description, target_descriptions)
 
         return [
-            ['(path)','(type)','(score)','(similarity)'],
-            ['BINARY','BINARY','DOUBLE','BINARY'],
+            ['(path)', '(type)', '(score)', '(similarity)'],
+            ['BINARY', 'BINARY', 'DOUBLE', 'BINARY'],
         ] + [
-            [path.encode(), type.encode() if type else None,score, similarity.encode()]
-            for path, type,score, similarity in zip(paths, types, scores, similarities)
+            [path.encode(), type.encode() if type else None, score, similarity.encode()]
+            for path, type, score, similarity in zip(paths, types, scores, similarities)
         ]

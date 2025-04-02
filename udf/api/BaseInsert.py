@@ -1,14 +1,17 @@
 from abc import abstractmethod
 import numpy as np
 
+
 class UDFBaseInsert:
     """
     Base class for handling insert operations into a data store.
     Subclasses (e.g., UDFDefaultInsert) should implement domain-specific
     logic to connect and store the data.
     """
+
     @abstractmethod
-    def insert(self, paths: list[str], types: list[str], descriptions: list[str], embeddings: list[np.ndarray]) -> tuple[int,int]:
+    def insert(self, paths: list[str], types: list[str], descriptions: list[str], embeddings: list[np.ndarray]) -> \
+    tuple[int, int]:
         """
         Handle the actual insertion of data in subclasses.
 
@@ -43,5 +46,5 @@ class UDFBaseInsert:
         return [
             ["(inserted)", "(failed)"],
             ["LONG", "LONG"],
-            [inserted,failed],
+            [inserted, failed],
         ]

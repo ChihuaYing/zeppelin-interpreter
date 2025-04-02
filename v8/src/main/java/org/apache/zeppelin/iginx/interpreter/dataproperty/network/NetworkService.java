@@ -49,6 +49,7 @@ public class NetworkService {
     LOGGER.info("initNetwork: {} {} {}", needMerge, needRelation, paragraphId);
     root = new NetworkTreeNode("rootId", "Data Asset", 0);
     buildForest(root, columnPath);
+    // todo: 取消 buildForest，改为调用 UDF 从 neo4j 中获取第一层结点
     if (needMerge) {
       LOGGER.info("before merge, the size is：{}", root.getChildren().size());
       mergeForest(root);
@@ -143,7 +144,7 @@ public class NetworkService {
       return;
     }
     Multimap<ClusterNode, String> groupingMap =
-        iginx.getGroupingOf(pattern, "default_fetch", "default_cluster", 18);
+        iginx.getGroupingOf(pattern, "default_fetch_embedding", "default_cluster", 18);
 
     Map<String, List<NetworkTreeNode>> labelToNodesMap = new HashMap<>();
     for (Map.Entry<ClusterNode, Collection<String>> group : groupingMap.asMap().entrySet()) {
@@ -213,6 +214,7 @@ public class NetworkService {
       links = getRelationLinks(addRelations);
     }
     nodes = getNodesData(node);
+    // todo: 改为 先调用 UDF 从 neo4j 中获取结点，然后再计算 relation
     addMap.put("nodes", nodes);
     addMap.put("links", links);
   }

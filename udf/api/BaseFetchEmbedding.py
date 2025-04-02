@@ -2,15 +2,16 @@ from abc import abstractmethod
 
 import numpy as np
 
-class UDFBaseFetch:
+
+class UDFBaseFetchEmbedding:
     """
-    Base class for fetching data based on a pattern and level.
+    Base class for fetching embedding based on a pattern and level.
     Derived classes should override the fetch() method to query and
     retrieve records, including path, type, description, and embeddings.
     """
 
     @abstractmethod
-    def fetch(self, pattern: str, level:int) -> list[tuple[str,str,str,np.ndarray]]:
+    def fetch(self, pattern: str, level: int) -> list[tuple[str, str, str, np.ndarray]]:
         """
         Retrieves records matching a pattern and level, returning each record's
         path, type, description, and numeric embedding for further use.
@@ -34,11 +35,11 @@ class UDFBaseFetch:
 
         pattern = kvargs["pattern"].decode("utf-8")
         level = int(kvargs["level"])
-        result = self.fetch(pattern,level)
+        result = self.fetch(pattern, level)
 
         return [
-            ['(path)','(type)','(description)','(embedding)'],
-            ['BINARY','BINARY','BINARY','BINARY'],
+            ['(path)', '(type)', '(description)', '(embedding)'],
+            ['BINARY', 'BINARY', 'BINARY', 'BINARY'],
         ] + [
             [path.encode(), type.encode() if type else None, description.encode(), embedding.tobytes()]
             for path, type, description, embedding in result

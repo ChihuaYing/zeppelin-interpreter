@@ -1,14 +1,17 @@
 import numpy as np
+from neo4j import GraphDatabase
 from pymilvus import connections, Collection, FieldSchema, DataType, CollectionSchema
 from pymilvus.orm import utility
 import tqdm
 
 from api.BaseInsert import UDFBaseInsert
-from default.DefaultUtilities import MILVUS_HOST, MILVUS_PORT, MILVUS_COLLECTION
+from default.DefaultUtilities import MILVUS_HOST, MILVUS_PORT, MILVUS_COLLECTION, NEO4J_HOST, NEO4J_PORT, \
+    NEO4J_USERNAME, NEO4J_PASSWORD
 
 
 class UDFDefaultInsert(UDFBaseInsert):
-    def __init__(self, milvus_host=MILVUS_HOST, milvus_port=MILVUS_PORT, collection_name = MILVUS_COLLECTION, batch_size=1000):
+    def __init__(self, milvus_host=MILVUS_HOST, milvus_port=MILVUS_PORT, collection_name=MILVUS_COLLECTION,
+                 batch_size=1000):
         self.milvus_host = milvus_host
         self.milvus_port = milvus_port
         self.collection_name = collection_name
@@ -26,7 +29,7 @@ class UDFDefaultInsert(UDFBaseInsert):
         collection = Collection(self.collection_name, schema=CollectionSchema([
             FieldSchema(name="path", dtype=DataType.VARCHAR, max_length=255, is_primary=True),
             FieldSchema(name="level", dtype=DataType.INT32),
-            FieldSchema(name="type", dtype=DataType.VARCHAR, max_length=10,nullable=True),
+            FieldSchema(name="type", dtype=DataType.VARCHAR, max_length=10, nullable=True),
             FieldSchema(name="description", dtype=DataType.VARCHAR, max_length=4097),
             FieldSchema(name="embedding", dtype=DataType.FLOAT_VECTOR, dim=768),
         ]))
@@ -52,10 +55,55 @@ class UDFDefaultInsert(UDFBaseInsert):
         collection.load()
         return collection
 
-    def insert(self,paths: list[str],types: list[str],descriptions: list[str], embeddings: list[np.ndarray]) -> tuple[int, int]:
+    def _delete_and_init(self, session):
+        session.run("MATCH (n:Node) DETACH DELETE n")
+        session.run(
+            "MERGE (r:Node {path: 'rootId'}) ON CREATE SET r.name = 'rootId', r.level = 0"
+        )
+
+    def _batch_insert_neo4j(self, session, paths_batch, levels_batch):
+        def execute_batch(tx, batch):
+            for path, level in batch:
+                path = "rootId." + path
+                name = path.split('.')[-1]
+                tx.run(
+                    "MERGE (n:Node {path: $path}) "
+                    "ON CREATE SET n.name = $name, n.level = $level",
+                    path=path, name=name, level=level
+                )
+                parent_path = '.'.join(path.split('.')[:-1])
+                if parent_path:
+                    tx.run(
+                        "MATCH (p:Node {path: $parent_path}) "
+                        "MATCH (c:Node {path: $child_path}) "
+                        "MERGE (p)-[:CONTAIN]->(c)",
+                        parent_path=parent_path, child_path=path
+                    )
+                if level == 1:
+                    tx.run(
+                        "MERGE (r:Node {path: 'rootId'}) "
+                        "MERGE (c:Node {path: $child_path}) "
+                        "MERGE (r)-[:CONTAIN]->(c)",
+                        child_path=path
+                    )
+
+        batch = list(zip(paths_batch, levels_batch))
+        session.execute_write(execute_batch, batch)
+        print("Inserted batch of size:", len(batch))
+
+    def insert(self, paths: list[str], types: list[str], descriptions: list[str], embeddings: list[np.ndarray]) -> \
+    tuple[int, int]:
+        neo4j_url = "bolt://" + NEO4J_HOST + ":" + NEO4J_PORT
+        driver = GraphDatabase.driver(neo4j_url, auth=(NEO4J_USERNAME, NEO4J_PASSWORD))
+        session = driver.session()
+        print("Deleting existing nodes and initializing in Neo4j")
+        self._delete_and_init(session)
+
         insert_results = []
         collection = self._recreate_and_load_collection()
-        levels = [path.count('.') for path in paths]
+        levels = [path.count('.') + 1 for path in paths]
+        types = ['BINARY' if not t else t for t in types]
+
         with tqdm.tqdm(total=len(paths), desc="Inserting embeddings") as pbar:
             for i in range(0, len(paths), self.batch_size):
                 paths_batch = paths[i:i + self.batch_size]
@@ -63,34 +111,50 @@ class UDFDefaultInsert(UDFBaseInsert):
                 types_batch = types[i:i + self.batch_size]
                 descriptions_batch = descriptions[i:i + self.batch_size]
                 embeddings_batch = embeddings[i:i + self.batch_size]
-                insert_result = collection.insert([paths_batch, levels_batch, types_batch, descriptions_batch, embeddings_batch])
+                insert_result = collection.insert(
+                    [paths_batch, levels_batch, types_batch, descriptions_batch, embeddings_batch])
                 insert_results.append(insert_result)
+                self._batch_insert_neo4j(session, paths_batch, levels_batch)
                 pbar.update(len(paths_batch))
+
+        session.close()
+        driver.close()
         inserted = sum([result.insert_count for result in insert_results])
         failed = len(paths) - inserted
         return inserted, failed
 
+
 if __name__ == "__main__":
     from default.DefaultDescribe import UDFDefaultDescribe
+
     descriptor = UDFDefaultDescribe()
     paths = [
-        "customer.c_custkey", "customer.c_name", "customer.c_address", "customer.c_nationkey", "customer.c_phone", "customer.c_acctbal", "customer.c_mktsegment", "customer.c_comment",
-        "lineitem.l_orderkey", "lineitem.l_partkey", "lineitem.l_suppkey", "lineitem.l_linenumber", "lineitem.l_quantity", "lineitem.l_extendedprice", "lineitem.l_discount", "lineitem.l_tax", "lineitem.l_returnflag", "lineitem.l_linestatus", "lineitem.l_shipdate", "lineitem.l_commitdate", "lineitem.l_receiptdate", "lineitem.l_shipinstruct", "lineitem.l_shipmode", "lineitem.l_comment",
+        "customer.c_custkey", "customer.c_name", "customer.c_address", "customer.c_nationkey", "customer.c_phone",
+        "customer.c_acctbal", "customer.c_mktsegment", "customer.c_comment",
+        "lineitem.l_orderkey", "lineitem.l_partkey", "lineitem.l_suppkey", "lineitem.l_linenumber",
+        "lineitem.l_quantity", "lineitem.l_extendedprice", "lineitem.l_discount", "lineitem.l_tax",
+        "lineitem.l_returnflag", "lineitem.l_linestatus", "lineitem.l_shipdate", "lineitem.l_commitdate",
+        "lineitem.l_receiptdate", "lineitem.l_shipinstruct", "lineitem.l_shipmode", "lineitem.l_comment",
         "nation.n_nationkey", "nation.n_name", "nation.n_regionkey", "nation.n_comment",
-        "orders.o_orderkey", "orders.o_custkey", "orders.o_orderstatus", "orders.o_totalprice", "orders.o_orderdate", "orders.o_orderpriority", "orders.o_clerk", "orders.o_shippriority", "orders.o_comment",
-        "part.p_partkey", "part.p_name", "part.p_mfgr", "part.p_brand", "part.p_type", "part.p_size", "part.p_container", "part.p_retailprice", "part.p_comment",
-        "partsupp.ps_partkey", "partsupp.ps_suppkey", "partsupp.ps_availqty", "partsupp.ps_supplycost", "partsupp.ps_comment",
+        "orders.o_orderkey", "orders.o_custkey", "orders.o_orderstatus", "orders.o_totalprice", "orders.o_orderdate",
+        "orders.o_orderpriority", "orders.o_clerk", "orders.o_shippriority", "orders.o_comment",
+        "part.p_partkey", "part.p_name", "part.p_mfgr", "part.p_brand", "part.p_type", "part.p_size",
+        "part.p_container", "part.p_retailprice", "part.p_comment",
+        "partsupp.ps_partkey", "partsupp.ps_suppkey", "partsupp.ps_availqty", "partsupp.ps_supplycost",
+        "partsupp.ps_comment",
         "region.r_regionkey", "region.r_name", "region.r_comment",
-        "supplier.s_suppkey", "supplier.s_name", "supplier.s_address", "supplier.s_nationkey", "supplier.s_phone", "supplier.s_acctbal", "supplier.s_comment"
+        "supplier.s_suppkey", "supplier.s_name", "supplier.s_address", "supplier.s_nationkey", "supplier.s_phone",
+        "supplier.s_acctbal", "supplier.s_comment"
     ]
     descriptor_data = [['path', 'type'], ['BINARY', 'BINARY']] + [[path.encode(), "BINARY".encode()] for path in paths]
     descriptor_result = descriptor.transform(descriptor_data, [], {})
     print(descriptor_result)
 
-    descriptor_result[0] = [ name[1:-1] for name in descriptor_result[0]]
+    descriptor_result[0] = [name[1:-1] for name in descriptor_result[0]]
 
-    from  default.DefaultEncode import UDFDefaultEncode
-    encoder = UDFDefaultEncode(cache_path="embeddings")
+    from default.DefaultEncode import UDFDefaultEncode
+
+    encoder = UDFDefaultEncode()
     encoder_data = descriptor_result
     encoder_result = encoder.transform(encoder_data, [], {})
     print(encoder_result)

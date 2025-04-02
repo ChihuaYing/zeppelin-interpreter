@@ -44,12 +44,10 @@ class UDFDefaultEncode(UDFBaseEncode):
 
         return embeddings
 
+
 if __name__ == "__main__":
     # get temp file path
-    udf = UDFDefaultEncode(cache_path='embeddings')
-    data=[['description'], ['BINARY'], ['hello'.encode()], ['world'.encode()]]
+    udf = UDFDefaultEncode()
+    data = [['description'], ['BINARY'], ['hello'.encode()], ['world'.encode()]]
     result = udf.transform(data, [], {})
     print(result)
-
-
-

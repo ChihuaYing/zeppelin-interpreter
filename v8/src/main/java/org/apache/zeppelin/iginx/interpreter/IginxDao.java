@@ -73,7 +73,7 @@ public class IginxDao {
     String fetchSql =
         String.format(
             "select `%s(path)` as path, `%<s(description)` as description, `%<s(embedding)` as embedding"
-                + " from (select %<s(*, pattern='%s',level=0) from (show columns ###))",
+                + " from (select %<s(*, pattern='%s',level=1) from (show columns ###))",
             fetchFunction, iginxPattern);
 
     String sql =
@@ -175,6 +175,8 @@ public class IginxDao {
         new String((byte[]) values.get(0).get(0), StandardCharsets.UTF_8),
         new String((byte[]) values.get(0).get(1), StandardCharsets.UTF_8));
   }
+
+  // todo: 添加调用 UDF 从 neo4j 获取下一层结点的逻辑  返回 List<NetworkNode>
 
   private List<List<Object>> executeSql(String sql) {
     SessionExecuteSqlResult sqlResult;

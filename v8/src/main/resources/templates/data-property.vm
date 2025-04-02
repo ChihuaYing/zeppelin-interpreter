@@ -61,7 +61,7 @@
 ##    <summary class="data-property-summary">Data Property</summary>
     <div style="display: flex; gap: 5px; align-items: stretch;">
         <!-- 左侧面板 -->
-        <div id="${paragraphId}_leftPanel" style="width: 400px; height: 570px; padding: 0 5px;">
+        <div id="${paragraphId}_leftPanel" style="width: 420px; height: 570px; padding: 0 5px;">
             <div style="border: 1px solid #ddd; padding: 10px; height: 100%; border-radius: 5px;">
                 <div style="color: black; font-size: 1.8rem; margin-bottom: 5px"><strong>LEDD</strong></div>
                 <div style="background-color: #6c757d; color: white; padding: 5px 10px; border-radius: 5px; font-size: 1.2rem; display: inline-block;">

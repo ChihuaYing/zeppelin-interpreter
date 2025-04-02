@@ -1,5 +1,6 @@
 from abc import abstractmethod
 
+
 class UDFBaseDescribe:
     """
     UDFBaseDescribe is an abstract base class that defines the interface for describing leaf paths with their types.
@@ -32,9 +33,10 @@ class UDFBaseDescribe:
         paths_with_description = self.describe(leaf_paths_with_type)
 
         return [
-            ['(path)','(type)','(description)'],
-            ['BINARY','BINARY','BINARY'],
+            ['(path)', '(type)', '(description)'],
+            ['BINARY', 'BINARY', 'BINARY'],
         ] + [
-            [path.encode(), leaf_paths_with_type[path].encode() if path in leaf_paths_with_type else None, description.encode()]
+            [path.encode(), leaf_paths_with_type[path].encode() if path in leaf_paths_with_type else None,
+             description.encode()]
             for path, description in paths_with_description.items()
         ]

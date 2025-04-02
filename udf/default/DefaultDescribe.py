@@ -1,10 +1,5 @@
-import shelve
-
-import numpy as np
-from sentence_transformers import SentenceTransformer
-import tqdm
-
 from api.BaseDescribe import UDFBaseDescribe
+
 
 class UDFDefaultDescribe(UDFBaseDescribe):
 

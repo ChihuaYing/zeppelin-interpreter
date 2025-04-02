@@ -2,6 +2,7 @@ from abc import abstractmethod
 
 import numpy as np
 
+
 class UDFBaseEncode:
     """
     Base class for encoding text descriptions into numeric embeddings.
@@ -37,7 +38,7 @@ class UDFBaseEncode:
         embeddings_bytes = [embedding.astype(np.float32).tobytes() for embedding in embeddings]
 
         return [
-            ['('+name+')' for name in data[0]] + ['(embedding)'],
+            ['(' + name + ')' for name in data[0]] + ['(embedding)'],
             data[1] + ['BINARY'],
         ] + [
             row + [embedding_bytes]

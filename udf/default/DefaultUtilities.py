@@ -5,13 +5,17 @@ import aiohttp
 from tenacity import retry, stop_after_attempt, wait_incrementing
 import tqdm
 
-EMBEDDING_CACHE_PATH = os.getenv("EMBEDDING_CACHE_PATH", "cache/embeddings")
-MILVUS_HOST = os.getenv("MILVUS_HOST", "localhost")
+EMBEDDING_CACHE_PATH = os.getenv("EMBEDDING_CACHE_PATH", "cache/embedding_cache.db")
+MILVUS_HOST = os.getenv("MILVUS_HOST", "127.0.0.1")
 MILVUS_PORT = os.getenv("MILVUS_PORT", 19530)
 MILVUS_COLLECTION = os.getenv("MILVUS_COLLECTION", "embeddings")
+NEO4J_HOST = os.getenv("NEO4J_HOST", "127.0.0.1")
+NEO4J_PORT = os.getenv("NEO4J_PORT", "7687")
+NEO4J_USERNAME = os.getenv("NEO4J_USERNAME", "neo4j")
+NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "password")
 
 LLM_CHAT_COMPLETIONS_URL = os.getenv("LLM_CHAT_COMPLETIONS_URL", "https://open.bigmodel.cn/api/paas/v4/chat/completions")
-LLM_CHAT_COMPLETIONS_KEY = os.getenv("LLM_CHAT_COMPLETIONS_KEY", "xxxxxxxxxx")
+LLM_CHAT_COMPLETIONS_KEY = os.getenv("LLM_CHAT_COMPLETIONS_KEY", "204a3ea9bf39f18dd9bf32c71ecbb607.mITgz6pgV7Hzj27A")
 LLM_CHAT_COMPLETIONS_MODEL = os.getenv("LLM_CHAT_COMPLETIONS_MODEL", "GLM-4-Flash")
 
 class LLMDao:
