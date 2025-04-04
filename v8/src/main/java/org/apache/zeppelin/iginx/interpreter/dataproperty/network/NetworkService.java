@@ -91,19 +91,18 @@ public class NetworkService {
 
     JSONObject result = new JSONObject();
     JSONObject addMap = new JSONObject();
-    //    JSONObject removeMap = new JSONObject();
+    JSONObject removeMap = new JSONObject();
 
     if (node.getExpanded()) {
-      throw new IllegalStateException("Node is already expanded");
-      //      collapseNode(node, addMap, removeMap);
-      //      node.setExpanded(false);
+      collapseNode(node, removeMap);
+      node.setExpanded(false);
+      result.put("remove", removeMap);
     } else {
       expandNode(node, addMap, function);
       node.setExpanded(true);
+      result.put("add", addMap);
     }
 
-    result.put("add", addMap);
-    //    result.put("remove", removeMap);
     long endTime = System.currentTimeMillis();
     LOGGER.info("handleNodeClick run time：" + (endTime - startTime) + "ms");
     return result.toString();
@@ -235,6 +234,30 @@ public class NetworkService {
     addMap.put("links", links);
   }
 
+  private void collapseNode(NetworkTreeNode node, JSONObject removeMap) {
+    LOGGER.info("collapseNode: node is {}", node.getNetworkId());
+    JSONArray nodes = new JSONArray();
+    for (NetworkTreeNode child : node.getChildren().values()) {
+      collectShownNodes(child, nodes);
+    }
+    removeMap.put("nodes", nodes);
+  }
+
+  private void collectShownNodes(NetworkTreeNode node, JSONArray nodes) {
+    if (node.getShown()) {
+      JSONObject nodeData = new JSONObject();
+      nodeData.put("id", node.getNetworkId());
+      nodes.add(nodeData);
+      node.setShown(false);
+      if (node.getExpanded()) {
+        node.setExpanded(false);
+      }
+      for (NetworkTreeNode child : node.getChildren().values()) {
+        collectShownNodes(child, nodes);
+      }
+    }
+  }
+
   private JSONArray getNodesData(NetworkTreeNode node) {
     JSONArray nodes = new JSONArray();
     if (node == root) {
@@ -358,8 +381,9 @@ public class NetworkService {
     }
     String[] parts = embeddingId.split("\\.", 2);
     String mergedRoot = originalTopNodeName2mergeRoot.get(parts[0]);
-    String networkId = parts[0] + "." + mergedRoot + "." + parts[1];
+    String networkId = "rootId." + mergedRoot + "." + embeddingId;
     embeddingId2NetworkId.put(embeddingId, networkId);
+    LOGGER.info("getNetworkIdByEmbeddingId: networkId is {}", networkId);
     return networkId;
   }
 }

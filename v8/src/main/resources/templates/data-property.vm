@@ -372,7 +372,9 @@
             }
 
             // 添加额外关系
-            handleRelation(relations);
+            if (relations) {
+                handleRelation(relations);
+            }
 
             return treeData;
         }
@@ -497,17 +499,16 @@
             await handleResult(resultJson, nodeId);
             await updateGeneratedParentChildEdgeColor();
             await resetOverview();
-            if (resultJson && resultJson.add && resultJson.add.nodes) {
-                await refreshSearch(resultJson.add.nodes.map(node => node.id));
-            }
+            await refreshSearch(Object.keys(nodeMap));
         }
 
-        function handleResult(result, nodeId) {
+        async function handleResult(result, nodeId) {
             console.log("begin handleResult");
             if (result && result.add) {
                 const parent = nodeMap[nodeId];
                 // 处理 add 中的 nodes
                 if (result.add.nodes) {
+                    console.debug("before add" + graph.getNodes().length + " " + graph.getEdges().length);
                     result.add.nodes.forEach(node => {
                         const child = {
                             id: node.id,
@@ -516,21 +517,42 @@
                             depth: node.depth,
                             children: [],
                             merge: node.merge,
-                            style: node.merge ? { fill: generatedNodesFillColor, stroke: allNodesStrokeColor, lineWidth: 2} : {fill: originalNodesFillColor, stroke: allNodesStrokeColor, lineWidth: 2},
+                            style: node.merge ? {
+                                fill: generatedNodesFillColor,
+                                stroke: allNodesStrokeColor,
+                                lineWidth: 2
+                            } : {fill: originalNodesFillColor, stroke: allNodesStrokeColor, lineWidth: 2},
                             description: node.description,
                         };
                         parent.children.push(child);
                         nodeMap[node.id] = child;
                     });
                 }
-
-                graph.refreshLayout()
-
+                graph.refreshLayout();
+                console.debug("after add" + graph.getNodes().length + " " + graph.getEdges().length);
                 refreshPreviousPolylineRelation();
                 // 处理 add 中的 links
                 if (result.add.links) {
-                    handleRelation(result.add.links);
+                    await handleRelation(result.add.links);
                 }
+                graph.fitView();
+            }
+
+            if (result && result.remove) {
+                console.debug("before delete" + graph.getNodes().length + " " + graph.getEdges().length);
+                // if (result.remove.nodes) {
+                //     result.remove.nodes.forEach(node => {
+                //         const item = graph.findById(node);
+                //         graph.removeItem(item);
+                //     })
+                // }
+                const node = graph.findById(nodeId);
+                await graph.updateItem(node, {
+                    children: [],
+                });
+                graph.refreshLayout();
+                console.debug("after delete" + graph.getNodes().length + " " + graph.getEdges().length);
+                await handleRelation([]);
                 graph.fitView();
             }
         }
@@ -563,26 +585,8 @@
             });
         }
 
-        function handleRelation(links) {
-            const tbody = document.getElementById(`${paragraphId}_relation_table_body`);
-            if (!tbody) {
-                console.error(`Table body with id ${paragraphId}_relation_table_body not found!`);
-                return;
-            }
-            const existingRows = tbody.getElementsByTagName('tr');
-            let startIndex = existingRows.length;
-            if (startIndex === 1 && links.length > 0) {
-                const firstRowCells = existingRows[0].getElementsByTagName('td');
-                if (firstRowCells.length >= 3) {
-                    const sourceText = firstRowCells[2].textContent.trim();
-                    const targetText = firstRowCells[3].textContent.trim();
-                    if (sourceText === "*.path.*" && targetText === "*.path.*") {
-                        tbody.innerHTML = "";
-                        startIndex = 0;
-                    }
-                }
-            }
-
+        async function handleRelation(links) {
+            console.debug("---handleRelation---");
             links.forEach((link, index) => {
                 const edgeConfig = {
                     source: link.from,
@@ -619,19 +623,34 @@
                     }
                 }
                 graph.addItem('edge', edgeConfig);
+            });
+            await updateRelationTable();
+        }
 
+        function updateRelationTable() {
+            console.debug("---updateRelationTable---");
+            const tbody = document.getElementById(`${paragraphId}_relation_table_body`);
+            if (!tbody) {
+                console.error(`Table body with id ${paragraphId}_relation_table_body not found!`);
+                return;
+            }
+            const relations = graph.getEdges().filter(edge => edge.getModel().label !== undefined && edge.isVisible());
+            console.debug("len is: " + relations.length);
+            tbody.innerHTML = "";
+            relations.forEach((relation, index) => {
+                const link = relation.getModel();
                 let row = tbody.insertRow();
                 let cell1 = row.insertCell(0);
-                cell1.innerHTML = "&nbsp;" + (startIndex + index + 1);
+                cell1.innerHTML = "&nbsp;" + (index + 1);
                 let cell2 = row.insertCell(1);
-                cell2.innerHTML = link.relation;
+                cell2.innerHTML = link.label;
                 let cell3 = row.insertCell(2);
-                cell3.innerHTML = getNameById(link.from);
+                cell3.innerHTML = getNameById(link.source);
                 let cell4 = row.insertCell(3);
-                cell4.innerHTML = getNameById(link.to);
+                cell4.innerHTML = getNameById(link.target);
                 let cell5 = row.insertCell(4);
                 cell5.innerHTML = link.score.toFixed(2);
-            });
+            })
         }
 
         function handleNodeLabel(str) {
@@ -648,6 +667,7 @@
 
 
         function resetOverview() {
+            console.debug("---resetOverview---");
             const nodeNum = graph.getNodes().length;
             const generatedNodeNum = graph.getNodes().filter(node => node.getModel().merge).length;
             const originalNodeNum = nodeNum - generatedNodeNum - 1;
@@ -660,6 +680,7 @@
         }
 
         function updateGeneratedParentChildEdgeColor() {
+            console.debug("---updateGeneratedParentChildEdgeColor---");
             const edges = graph.getEdges();
             edges.forEach(edge => {
                 const model = edge.getModel();
@@ -721,6 +742,7 @@
         }
 
         function refreshSearch(ids) {
+            console.debug("---refreshSearch---")
             for (let i = 0; i < ids.length; i++) {
                 for (let j = 0; j < searchedNodes.length; j++) {
                     if (ids[i] === searchedNodes[j].id) {
