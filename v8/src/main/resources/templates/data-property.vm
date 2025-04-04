@@ -546,7 +546,7 @@
                 });
                 graph.refreshLayout();
                 graph.fitView();
-                // 此处有待优化，必须等待graph.refreshLayout()全过程完成之后再更新面板数据
+                // todo: 此处有待优化，必须等待graph.refreshLayout()全过程完成之后再更新面板数据
                 await delay(1000);
                 console.debug("after delete" + graph.getNodes().length + " " + graph.getEdges().length);
                 await handleRelation([]);
