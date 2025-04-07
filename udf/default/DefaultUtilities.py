@@ -5,7 +5,7 @@ import aiohttp
 from tenacity import retry, stop_after_attempt, wait_incrementing
 import tqdm
 
-EMBEDDING_CACHE_PATH = os.getenv("EMBEDDING_CACHE_PATH", "cache/embedding_cache.db")
+EMBEDDING_CACHE_PATH = os.getenv("EMBEDDING_CACHE_PATH", "cache/embeddings")
 MILVUS_HOST = os.getenv("MILVUS_HOST", "127.0.0.1")
 MILVUS_PORT = os.getenv("MILVUS_PORT", 19530)
 MILVUS_COLLECTION = os.getenv("MILVUS_COLLECTION", "embeddings")
