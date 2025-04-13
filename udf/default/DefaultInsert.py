@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import numpy as np
 from neo4j import GraphDatabase
 from pymilvus import connections, Collection, FieldSchema, DataType, CollectionSchema
@@ -11,11 +12,12 @@ from default.DefaultUtilities import MILVUS_HOST, MILVUS_PORT, MILVUS_COLLECTION
 
 class UDFDefaultInsert(UDFBaseInsert):
     def __init__(self, milvus_host=MILVUS_HOST, milvus_port=MILVUS_PORT, collection_name=MILVUS_COLLECTION,
-                 batch_size=1000):
+                 batch_size=1000, neo4j_threads=16):
         self.milvus_host = milvus_host
         self.milvus_port = milvus_port
         self.collection_name = collection_name
         self.batch_size = batch_size
+        self.neo4j_threads = neo4j_threads
 
     def _recreate_and_load_collection(self):
         print(f"Recreating collection {self.collection_name} of Milvus in {self.milvus_host}:{self.milvus_port}")
@@ -62,34 +64,32 @@ class UDFDefaultInsert(UDFBaseInsert):
         )
 
     def _batch_insert_neo4j(self, session, paths_batch, levels_batch):
-        def execute_batch(tx, batch):
-            for path, level in batch:
-                path = "rootId." + path
-                name = path.split('.')[-1]
-                tx.run(
-                    "MERGE (n:Node {path: $path}) "
-                    "ON CREATE SET n.name = $name, n.level = $level",
-                    path=path, name=name, level=level
-                )
-                parent_path = '.'.join(path.split('.')[:-1])
-                if parent_path:
-                    tx.run(
-                        "MATCH (p:Node {path: $parent_path}) "
-                        "MATCH (c:Node {path: $child_path}) "
-                        "MERGE (p)-[:CONTAIN]->(c)",
-                        parent_path=parent_path, child_path=path
-                    )
-                if level == 1:
-                    tx.run(
-                        "MERGE (r:Node {path: 'rootId'}) "
-                        "MERGE (c:Node {path: $child_path}) "
-                        "MERGE (r)-[:CONTAIN]->(c)",
-                        child_path=path
-                    )
+        def execute_batch(tx, batch_data):
+            tx.run("""
+                MATCH (r:Node {path: 'rootId'})
+                UNWIND $batch AS row
+                CREATE (n:Node {path: row.path, name: row.name, level: row.level})
 
-        batch = list(zip(paths_batch, levels_batch))
-        session.execute_write(execute_batch, batch)
-        print("Inserted batch of size:", len(batch))
+                WITH row, r
+                WHERE row.parent_path IS NOT NULL
+                MATCH (p:Node {path: row.parent_path})
+                MATCH (c:Node {path: row.path})
+                CREATE (p)-[:CONTAIN]->(c)
+            """, batch=batch_data)
+
+        batch_data = []
+        for path, level in zip(paths_batch, levels_batch):
+            full_path = f"rootId.{path}"
+            name = full_path.split('.')[-1]
+            parent_path = '.'.join(full_path.split('.')[:-1]) if '.' in full_path else None
+            batch_data.append({
+                'path': full_path,
+                'name': name,
+                'level': level,
+                'parent_path': parent_path
+            })
+
+        session.execute_write(execute_batch, batch_data)
 
     def insert(self, paths: list[str], types: list[str], descriptions: list[str], embeddings: list[np.ndarray]) -> \
     tuple[int, int]:
@@ -104,7 +104,13 @@ class UDFDefaultInsert(UDFBaseInsert):
         levels = [path.count('.') + 1 for path in paths]
         types = ['BINARY' if not t else t for t in types]
 
-        with tqdm.tqdm(total=len(paths), desc="Inserting embeddings") as pbar:
+        def insert_to_neo4j(batch_paths, batch_levels):
+            with driver.session() as thread_session:
+                self._batch_insert_neo4j(thread_session, batch_paths, batch_levels)
+
+        with tqdm.tqdm(total=len(paths), desc="Inserting embeddings") as pbar, tqdm.tqdm(total=len(paths), desc="Inserting graph nodes") as neo4j_bar, ThreadPoolExecutor(max_workers=self.neo4j_threads) as executor:
+            futures = []
+            batches = []
             for i in range(0, len(paths), self.batch_size):
                 paths_batch = paths[i:i + self.batch_size]
                 levels_batch = levels[i:i + self.batch_size]
@@ -114,8 +120,15 @@ class UDFDefaultInsert(UDFBaseInsert):
                 insert_result = collection.insert(
                     [paths_batch, levels_batch, types_batch, descriptions_batch, embeddings_batch])
                 insert_results.append(insert_result)
-                self._batch_insert_neo4j(session, paths_batch, levels_batch)
+
+                futures.append(executor.submit(insert_to_neo4j, paths_batch, levels_batch))
+                batches.append(len(paths_batch))
+
                 pbar.update(len(paths_batch))
+
+            for future, batch_len in zip(as_completed(futures), batches):
+                future.result()
+                neo4j_bar.update(batch_len)
 
         session.close()
         driver.close()
