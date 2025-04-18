@@ -31,6 +31,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.zeppelin.iginx.interpreter.AbstractExtensionInterpreter;
+import org.apache.zeppelin.iginx.interpreter.DataSync.DataSyncInterpreter;
 import org.apache.zeppelin.iginx.interpreter.dataproperty.DataPropertyInterpreter;
 import org.apache.zeppelin.iginx.interpreter.udfgenerator.UdfGeneratorInterpreter;
 import org.apache.zeppelin.iginx.util.*;
@@ -126,6 +127,7 @@ public class IginxInterpreter8 extends Interpreter {
   private SimpleFileServer fileServer;
   private AbstractExtensionInterpreter dataPropertyInterpreter;
   private AbstractExtensionInterpreter udfGeneratorInterpreter;
+  private AbstractExtensionInterpreter dataSyncInterpreter;
 
   // 返回结果为单个表格的语句
   private static final List<SqlType> singleFormSqlType =
@@ -208,6 +210,12 @@ public class IginxInterpreter8 extends Interpreter {
             session,
             getProperty(IGINX_MILVUS_HOST, DEFAULT_MILVUS_HOST).trim(),
             Integer.parseInt(getProperty(IGINX_MILVUS_PORT, DEFAULT_MILVUS_PORT).trim()));
+
+    dataSyncInterpreter =
+            new DataSyncInterpreter(
+                    session,
+                    getProperty(IGINX_MILVUS_HOST, DEFAULT_MILVUS_HOST).trim(),
+                    Integer.parseInt(getProperty(IGINX_MILVUS_PORT, DEFAULT_MILVUS_PORT).trim()));
 
     try {
       fileServer =
@@ -320,6 +328,9 @@ public class IginxInterpreter8 extends Interpreter {
       }
       if (udfGeneratorInterpreter.canInterpret(sql)) {
         return udfGeneratorInterpreter.interpret(sql, context);
+      }
+      if (dataSyncInterpreter.canInterpret(sql)) {
+        return dataSyncInterpreter.interpret(sql, context);
       }
 
       SessionExecuteSqlResult sqlResult = session.executeSql(sql);

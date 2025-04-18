@@ -5,6 +5,7 @@ import cn.edu.tsinghua.iginx.session.Column;
 import cn.edu.tsinghua.iginx.session.Session;
 import cn.edu.tsinghua.iginx.session.SessionExecuteSqlResult;
 import cn.edu.tsinghua.iginx.thrift.DataType;
+import cn.edu.tsinghua.iginx.utils.FormatUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.google.common.base.Preconditions;
@@ -19,6 +20,7 @@ import org.apache.zeppelin.iginx.interpreter.dataproperty.entry.Relation;
 import org.apache.zeppelin.iginx.interpreter.dataproperty.entry.SearchedNode;
 import org.apache.zeppelin.iginx.interpreter.dataproperty.network.NetworkTreeNode;
 import org.apache.zeppelin.iginx.interpreter.udfgenerator.GeneratedResult;
+import org.apache.zeppelin.iginx.util.TableUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,7 +54,7 @@ public class IginxDao {
     Preconditions.checkArgument(StringUtils.isNotBlank(iginxPattern));
 
     String sql = String.format("select path, type from (show columns %s);", iginxPattern);
-    List<List<Object>> values = executeSql(sql);
+    List<List<Object>> values = getExecuteSqlValue(sql);
 
     List<Column> columns = new ArrayList<>();
     for (List<Object> row : values) {
@@ -71,7 +73,7 @@ public class IginxDao {
     String sql =
         String.format("select %s(*, path='%s') from (show columns ###);", function, parentPath);
     LOGGER.info("sql is: {}", sql);
-    List<List<Object>> values = executeSql(sql);
+    List<List<Object>> values = getExecuteSqlValue(sql);
 
     List<NetworkTreeNode> nodes = new ArrayList<>();
     for (List<Object> row : values) {
@@ -100,7 +102,7 @@ public class IginxDao {
             "select `%s(path)`, `%<s(cluster)`" + " from (select %<s(*, target='%d') from (%s));",
             clusterFunction, target, fetchSql);
 
-    List<List<Object>> values = executeSql(sql);
+    List<List<Object>> values = getExecuteSqlValue(sql);
     Multimap<ClusterNode, String> groupingMap = HashMultimap.create();
     for (List<Object> row : values) {
       String path = new String((byte[]) row.get(0), StandardCharsets.UTF_8);
@@ -131,7 +133,7 @@ public class IginxDao {
                 + " from (select %<s(*, pattern='%s', topk=%s) from (%s));",
             function, iginxPattern, topK, encodeSql);
 
-    List<List<Object>> values = executeSql(sql);
+    List<List<Object>> values = getExecuteSqlValue(sql);
 
     List<SearchedNode> pairs = new ArrayList<>();
     for (List<Object> row : values) {
@@ -167,7 +169,7 @@ public class IginxDao {
                 + " from (select %<s(*, sources='%s', targets='%s', host='%s', port='%d') from (show columns ###));",
             function, sourcePathsJson, targetPathsJson, milvusHost, milvusPort);
 
-    List<List<Object>> values = executeSql(sql);
+    List<List<Object>> values = getExecuteSqlValue(sql);
 
     List<Relation> relations = new ArrayList<>();
     for (List<Object> row : values) {
@@ -189,19 +191,44 @@ public class IginxDao {
         String.format(
             "select `%s(prompt)`, `%<s(udf)` from (select %<s(*) from (select '%s' as type, '%s' as description));",
             function, type.replace("'", "\\'"), description.replace("'", "\\'"));
-    List<List<Object>> values = executeSql(sql);
+    List<List<Object>> values = getExecuteSqlValue(sql);
     return new GeneratedResult(
         new String((byte[]) values.get(0).get(0), StandardCharsets.UTF_8),
         new String((byte[]) values.get(0).get(1), StandardCharsets.UTF_8));
   }
 
-  private List<List<Object>> executeSql(String sql) {
+  public String dataSynchronization(String insertFunction, String encodeFunction, String describeFunction) {
+    Preconditions.checkNotNull(insertFunction);
+    Preconditions.checkNotNull(encodeFunction);
+    Preconditions.checkNotNull(describeFunction);
+
+    String sql = String.format("SELECT %s(*) FROM (SELECT `%s(path)` as path, `%<s(type)` as type, `%<s(description)` as description, `%<s(embedding)` as embedding " +
+            "FROM(SELECT %<s(*) FROM (SELECT %s(path)` as path, `%<s(type)` as type, `%<s(description)` as description FROM (SELECT %<s(*) FROM (show columns)))));"
+            ,insertFunction, encodeFunction, describeFunction);
+
+    SessionExecuteSqlResult result = executeSql(sql);
+    List<List<String>> queryList =
+            result.getResultInList(
+                    false, FormatUtils.DEFAULT_TIME_FORMAT, "");
+      return TableUtil.buildSingleFormResult(queryList);
+  }
+
+
+
+
+  private List<List<Object>> getExecuteSqlValue(String sql) {
+    SessionExecuteSqlResult sqlResult;
+    sqlResult = executeSql(sql);
+    return sqlResult.getValues();
+  }
+
+  private SessionExecuteSqlResult executeSql(String sql) {
     SessionExecuteSqlResult sqlResult;
     try {
       sqlResult = session.executeSql(sql);
     } catch (SessionException e) {
       throw new RuntimeException("Failed to execute SQL: " + sql, e);
     }
-    return sqlResult.getValues();
+    return sqlResult;
   }
 }
