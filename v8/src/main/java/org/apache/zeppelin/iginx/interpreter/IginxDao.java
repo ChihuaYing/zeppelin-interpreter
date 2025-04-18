@@ -213,9 +213,6 @@ public class IginxDao {
       return TableUtil.buildSingleFormResult(queryList);
   }
 
-
-
-
   private List<List<Object>> getExecuteSqlValue(String sql) {
     SessionExecuteSqlResult sqlResult;
     sqlResult = executeSql(sql);
