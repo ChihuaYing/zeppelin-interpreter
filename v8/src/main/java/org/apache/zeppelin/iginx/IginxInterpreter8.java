@@ -212,10 +212,10 @@ public class IginxInterpreter8 extends Interpreter {
             Integer.parseInt(getProperty(IGINX_MILVUS_PORT, DEFAULT_MILVUS_PORT).trim()));
 
     dataSyncInterpreter =
-            new DataSyncInterpreter(
-                    session,
-                    getProperty(IGINX_MILVUS_HOST, DEFAULT_MILVUS_HOST).trim(),
-                    Integer.parseInt(getProperty(IGINX_MILVUS_PORT, DEFAULT_MILVUS_PORT).trim()));
+        new DataSyncInterpreter(
+            session,
+            getProperty(IGINX_MILVUS_HOST, DEFAULT_MILVUS_HOST).trim(),
+            Integer.parseInt(getProperty(IGINX_MILVUS_PORT, DEFAULT_MILVUS_PORT).trim()));
 
     try {
       fileServer =

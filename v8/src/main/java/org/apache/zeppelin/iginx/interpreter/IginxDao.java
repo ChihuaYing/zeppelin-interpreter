@@ -197,20 +197,41 @@ public class IginxDao {
         new String((byte[]) values.get(0).get(1), StandardCharsets.UTF_8));
   }
 
-  public String dataSynchronization(String insertFunction, String encodeFunction, String describeFunction) {
+  public String dataSynchronization(
+      String insertFunction, String encodeFunction, String describeFunction) {
     Preconditions.checkNotNull(insertFunction);
     Preconditions.checkNotNull(encodeFunction);
     Preconditions.checkNotNull(describeFunction);
 
-    String sql = String.format("SELECT %s(*) FROM (SELECT `%s(path)` as path, `%<s(type)` as type, `%<s(description)` as description, `%<s(embedding)` as embedding " +
-            "FROM(SELECT %<s(*) FROM (SELECT %s(path)` as path, `%<s(type)` as type, `%<s(description)` as description FROM (SELECT %<s(*) FROM (show columns)))));"
-            ,insertFunction, encodeFunction, describeFunction);
+    String sql =
+        String.format(
+            "        SELECT %s(*)\n"
+                + "        FROM (\n"
+                + "            SELECT\n"
+                + "                `%s(path)` as path,\n"
+                + "                `%<s(type)` as type,\n"
+                + "                `%<s(description)` as description,\n"
+                + "                `%<s(embedding)` as embedding\n"
+                + "            FROM(\n"
+                + "                SELECT %<s(*)\n"
+                + "                FROM (\n"
+                + "                    SELECT\n"
+                + "                        `%s(path)` as path,\n"
+                + "                        `%<s(type)` as type,\n"
+                + "                        `%<s(description)` as description\n"
+                + "                    FROM (\n"
+                + "                        SELECT %<s(*)\n"
+                + "                        FROM (show columns)\n"
+                + "                    )\n"
+                + "                )\n"
+                + "            )\n"
+                + "        );",
+            insertFunction, encodeFunction, describeFunction);
 
     SessionExecuteSqlResult result = executeSql(sql);
     List<List<String>> queryList =
-            result.getResultInList(
-                    false, FormatUtils.DEFAULT_TIME_FORMAT, "");
-      return TableUtil.buildSingleFormResult(queryList);
+        result.getResultInList(false, FormatUtils.DEFAULT_TIME_FORMAT, "");
+    return TableUtil.buildSingleFormResult(queryList);
   }
 
   private List<List<Object>> getExecuteSqlValue(String sql) {

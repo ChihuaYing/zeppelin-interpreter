@@ -1,4 +1,18 @@
 services:
+  neo4j:
+    image: neo4j:4.4.41
+    container_name: neo4j
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+      - neo4j_import:/var/lib/neo4j/import
+      - neo4j_plugins:/plugins
+    environment:
+      NEO4J_AUTH: neo4j/password
+
   etcd:
     image: quay.io/coreos/etcd:v3.5.16
     environment:
@@ -106,6 +120,7 @@ services:
     links:
       - iginx
       - milvus
+      - neo4j
 
 networks:
   default:
@@ -113,3 +128,9 @@ networks:
       driver: default
       config:
         - subnet: 192.168.0.0/24
+
+volumes:
+  neo4j_data:
+  neo4j_logs:
+  neo4j_import:
+  neo4j_plugins:
