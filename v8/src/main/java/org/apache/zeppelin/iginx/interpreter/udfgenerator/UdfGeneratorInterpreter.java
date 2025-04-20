@@ -23,7 +23,8 @@ public class UdfGeneratorInterpreter extends AbstractExtensionInterpreter {
           put(">generate.udf.cluster", "Cluster");
           put(">generate.udf.describe", "Describe");
           put(">generate.udf.encode", "Encode");
-          put(">generate.udf.fetch", "Fetch");
+          put(">generate.udf.fetch_node", "FetchNode");
+          put(">generate.udf.fetch_embedding", "FetchEmbedding");
           put(">generate.udf.generate", "Generate");
           put(">generate.udf.insert", "Insert");
           put(">generate.udf.relate", "Relate");
