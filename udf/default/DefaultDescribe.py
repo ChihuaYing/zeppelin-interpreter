@@ -30,6 +30,9 @@ class UDFDefaultDescribe(UDFBaseDescribe):
                 description_nodes += list(tree.keys())
             else:
                 description_nodes += list(value.keys())
+            description_nodes.append(key)
+            description_nodes.append(key)
+            description_nodes.insert(0, key)
             descriptions[".".join(path_nodes)] = ", ".join(description_nodes)
             self._dfs_build_descriptions(value, path_nodes, descriptions)
             path_nodes.pop()

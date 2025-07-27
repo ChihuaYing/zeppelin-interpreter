@@ -42,19 +42,36 @@ class UDFDefaultSearch(UDFBaseSearch):
         ]
 
     def describe_similarity(self, source_description: str, target_descriptions: list[str]) -> list[str]:
+        print(source_description)
+        print(target_descriptions)
+        # prompts = [
+        #     f"""
+        #     Just output the similarity description, do not include any analysis or reasoning.
+        #     Please output the result in a single line sentence.
+        #     Describe the similarity between '
+        #     ```
+        #     {source_description}
+        #     ```
+        #     and
+        #     ```
+        #     {target_description}
+        #     ```.
+        #
+        #     """
+        #     for target_description in target_descriptions
+        # ]
         prompts = [
             f"""
-            Just output the similarity description, do not include any analysis or reasoning.
-            Please output the result in a single line sentence.
-            Describe the similarity between '
+            只需输出相似性描述，不要包含任何分析或推理。  
+            请将结果输出为一句话，且为单行文本。  
+            描述以下两者之间的相似性：
             ```
             {source_description}
             ```
-            and 
+            和
             ```
             {target_description}
-            ```.
-
+            ```
             """
             for target_description in target_descriptions
         ]

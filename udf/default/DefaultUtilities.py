@@ -34,7 +34,7 @@ class LLMDao:
             request_body = {
                 "model": self.model,
                 "messages": [{"role": "user", "content": prompt}],
-                "temperature": 0.0,
+                "temperature": 0.5,
                 "stream": False,
                 "do_sample": False,
             }

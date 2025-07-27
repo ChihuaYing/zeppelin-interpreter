@@ -147,7 +147,7 @@ public class NetworkService {
       return;
     }
     Multimap<ClusterNode, String> groupingMap =
-        iginx.getGroupingOf(pattern, "default_fetch_embedding", "default_cluster", 5);
+        iginx.getGroupingOf(pattern, "default_fetch_embedding", "default_cluster", 4);
 
     Map<String, List<NetworkTreeNode>> labelToNodesMap = new HashMap<>();
     for (Map.Entry<ClusterNode, Collection<String>> group : groupingMap.asMap().entrySet()) {
@@ -226,7 +226,27 @@ public class NetworkService {
 
     if (needRelation) {
       List<Relation> addRelations = calculateNodeRelation(node, function);
+      LOGGER.info("expandNode: the size of addRelations is {}", addRelations.size());
+      List<Relation> relations = new ArrayList<>();
+      if (!addRelations.isEmpty()) {
+        LOGGER.info(
+            "expandNode: {} {}",
+            addRelations.get(0).getFromPath(),
+            addRelations.get(0).getToPath());
+        for (Relation relation : addRelations) {
+          NetworkTreeNode node1 = getNodeById(relation.getFromPath());
+          NetworkTreeNode node2 = getNodeById(relation.getToPath());
+          assert node1 != null;
+          assert node2 != null;
+          if (!Objects.equals(node1.getMergedRoot(), node2.getMergedRoot())) {
+            relations.add(relation);
+          }
+        }
+      }
+      addRelations = relations;
+      LOGGER.info("expandNode: the size of addRelations is {}", addRelations.size());
       links = getRelationLinks(addRelations);
+      LOGGER.info("expandNode: the size of links is {}", links.size());
     }
     nodes = getNodesData(node);
 
@@ -326,9 +346,12 @@ public class NetworkService {
 
       String from = embeddingId2NetworkId.get(sourceEmbeddingId);
       String to = embeddingId2NetworkId.get(targetEmbeddingId);
-
+      LOGGER.info("calculateNodeRelation: {} {} {} {}", from, to, score, relation.getDescription());
       relationsWithNetworkId.add(new Relation(from, to, score, relation.getDescription()));
     }
+    LOGGER.info(
+        "calculateNodeRelation: the size of relationsWithNetworkId is {}",
+        relationsWithNetworkId.size());
 
     return relationsWithNetworkId;
   }

@@ -125,7 +125,7 @@
                     </div>
                     <div>
                         <label for="${paragraphId}_search_top_k_box" style="width: 60px; text-align: right;"><Strong>Top K: </Strong></label>
-                        <input type="text" id="${paragraphId}_search_top_k_box" style="width: 35px;" value="10"/>
+                        <input type="text" id="${paragraphId}_search_top_k_box" style="width: 35px;" value="3"/>
                     </div>
                     <div style="display: flex; align-items: center;">
                         <input id="${paragraphId}_search_input" type="text" value="default_search" placeholder="input udf..." style="padding: 5px; border: 1px solid #ccc; border-radius: 4px; margin-right: 5px; width: 120px;">
@@ -652,7 +652,8 @@
         }
 
         function handleNodeLabel(str) {
-            const maxLabelLength = 24;
+            // const maxLabelLength = 24;
+            const maxLabelLength = 14;
             return str.length > maxLabelLength
                     ? str.substring(0, maxLabelLength) + "..."
                     : str;
@@ -729,7 +730,8 @@
                 let cell1 = row.insertCell(0);
                 cell1.innerHTML = "&nbsp;" + (index + 1);
                 let cell2 = row.insertCell(1);
-                cell2.innerHTML = getNameById(node.id);
+                // cell2.innerHTML = getNameById(node.id);
+                cell2.innerHTML = node.id;
                 let cell3 = row.insertCell(2);
                 cell3.innerHTML = node.description;
                 let cell4 = row.insertCell(3);

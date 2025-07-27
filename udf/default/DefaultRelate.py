@@ -72,11 +72,17 @@ class UDFDefaultRelate(UDFBaseRelate):
             return []
 
         prompts = [
+            # f"""
+            # You are a concept master.
+            # Please provide a concise and specific description of the relationship
+            # between "{source_description}" and "{target_description}" in one sentence using no more than 10 words and without any punctuation.
+            # Only the summary result is needed. Ensure the summary does not exceed 10 words and is concise and logical phrase.
+            # """
             f"""
-            You are a concept master. 
-            Please provide a concise and specific description of the relationship 
-            between "{source_description}" and "{target_description}" in one sentence using no more than 10 words and without any punctuation. 
-            Only the summary result is needed. Ensure the summary does not exceed 10 words and is concise and logical phrase.
+            你是一位概念大师。  
+            请用一个句子简洁明确地描述“{source_description}”与“{target_description}”之间的关系，  
+            句子不得超过20个字，且不得使用任何标点符号。  
+            只需输出总结结果，要求用词简练、表达逻辑清晰。
             """
             for source_description, target_description in zip(relations['source_description'], relations['target_description'])
         ]
