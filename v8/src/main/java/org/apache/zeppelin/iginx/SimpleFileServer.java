@@ -6,9 +6,7 @@ import com.sun.net.httpserver.HttpServer;
 import java.io.*;
 import java.net.*;
 import java.nio.file.Files;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.Enumeration;
+import java.util.*;
 import org.apache.zeppelin.iginx.util.HttpUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,7 +22,7 @@ public class SimpleFileServer {
   private String uploadFileDir;
   private Long uploadDirMaxSize;
   protected static final boolean isOnWin =
-      System.getProperty("os.name").toLowerCase().contains("win");
+          System.getProperty("os.name").toLowerCase().contains("win");
 
   private HttpServer httpServer = null;
 
@@ -36,22 +34,14 @@ public class SimpleFileServer {
   }
 
   public void start() throws IOException {
-    // 检测端口是否被占用，如果占用则kill掉
-    try {
-      new Socket("localhost", port).close();
-      LOGGER.info("SimpleFileServer started on port {}", port);
-      if (isOnWin) {
-        Runtime.getRuntime()
-            .exec(
-                "for /f \"tokens=5\" %a in ('netstat -ano ^| findstr :"
-                    + port
-                    + "') do taskkill /F /PID %a");
-      } else {
-        Runtime.getRuntime().exec("kill -9 $(lsof -t -i:" + port + ")");
-      }
+    try (ServerSocket socket = new ServerSocket(port)) {
+      socket.setReuseAddress(true);
     } catch (IOException e) {
-      // do nothing
-      LOGGER.error("restart server error.", e);
+      LOGGER.error("Port {} is already in use, trying to kill the process...", port);
+
+      if (isOnWin) {
+        killProcessOnWindows(port);
+      }
     }
 
     try {
@@ -70,6 +60,45 @@ public class SimpleFileServer {
   public void stop() {
     if (httpServer != null) {
       httpServer.stop(0);
+    }
+  }
+
+  private void killProcessOnWindows(int port) {
+    try {
+      // 执行 netstat 命令查找占用端口的进程 ID
+      String cmd = "netstat -ano | findstr :" + port;
+      ProcessBuilder builder = new ProcessBuilder("cmd.exe", "/c", cmd);
+      Process process = builder.start();
+      try (BufferedReader reader =
+                   new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+        String line;
+        Set<String> pids = new HashSet<>();
+        while ((line = reader.readLine()) != null) {
+          LOGGER.info("netstat output: {}", line);
+          String[] parts = line.split("\\s+");
+          if (parts.length > 4) {
+            String pid = parts[parts.length - 1]; // PID 是 netstat 输出的最后一个字段
+            pids.add(pid);
+          }
+        }
+        if (pids.isEmpty()) {
+          LOGGER.warn("No process found occupying port {}", port);
+          return;
+        }
+        // 遍历所有 PID 并使用 taskkill 命令终止进程
+        for (String pid : pids) {
+          String killCmd = "taskkill /F /PID " + pid;
+          process = Runtime.getRuntime().exec(killCmd);
+          int exitCode = process.waitFor(); // 等待命令执行完成
+          if (exitCode == 0) {
+            LOGGER.info("Successfully killed process(pid is {}) occupying port {}", pid, port);
+          } else {
+            LOGGER.error("Failed to kill process(pid is {}) on port {}", pid, port);
+          }
+        }
+      }
+    } catch (Exception ex) {
+      LOGGER.error("Failed to kill process on port {}", port, ex);
     }
   }
 
@@ -96,8 +125,8 @@ public class SimpleFileServer {
           // 设置响应头为文件下载
           exchange.getResponseHeaders().set("Content-Type", "application/octet-stream");
           exchange
-              .getResponseHeaders()
-              .set("Content-Disposition", "attachment; filename=\"" + file.getName() + "\"");
+                  .getResponseHeaders()
+                  .set("Content-Disposition", "attachment; filename=\"" + file.getName() + "\"");
           exchange.sendResponseHeaders(200, file.length());
 
           // 读取文件并写入响应体
@@ -153,8 +182,8 @@ public class SimpleFileServer {
           uploadDir.mkdirs();
         }
         br =
-            new BufferedReader(
-                new InputStreamReader(new BufferedInputStream(exchange.getRequestBody())));
+                new BufferedReader(
+                        new InputStreamReader(new BufferedInputStream(exchange.getRequestBody())));
         /* parse form-data */
         while ((line = br.readLine()) != null) {
           LOGGER.debug(line);
@@ -173,9 +202,9 @@ public class SimpleFileServer {
               br.readLine();
               isContent = true;
               bw =
-                  new BufferedWriter(
-                      new OutputStreamWriter(
-                          Files.newOutputStream(new File(uploadDir, fileName).toPath())));
+                      new BufferedWriter(
+                              new OutputStreamWriter(
+                                      Files.newOutputStream(new File(uploadDir, fileName).toPath())));
             } else {
               String paramName = line.substring(line.indexOf("name=") + 6, line.length() - 1);
               br.readLine();
@@ -200,11 +229,11 @@ public class SimpleFileServer {
           bw.close();
         }
         LOGGER.info(
-            "received parameters:{},{},{},{}", zeppelinUrl, noteBookId, paragraphId, fileName);
+                "received parameters:{},{},{},{}", zeppelinUrl, noteBookId, paragraphId, fileName);
         String result =
-            HttpUtil.sendPost(
-                String.format("%s/api/notebook/run/%s/%s", zeppelinUrl, noteBookId, paragraphId),
-                null);
+                HttpUtil.sendPost(
+                        String.format("%s/api/notebook/run/%s/%s", zeppelinUrl, noteBookId, paragraphId),
+                        null);
         LOGGER.info("result of rerun paragraph command: {}", result);
         exchange.sendResponseHeaders(200, 0);
       } catch (IOException e) {
@@ -279,7 +308,7 @@ public class SimpleFileServer {
                 }
               }
             })
-        .start();
+            .start();
   }
 
   /**
@@ -293,8 +322,8 @@ public class SimpleFileServer {
       while (networkInterfaces.hasMoreElements()) {
         NetworkInterface networkInterface = networkInterfaces.nextElement();
         if (networkInterface.isLoopback()
-            || networkInterface.isVirtual()
-            || !networkInterface.isUp()) {
+                || networkInterface.isVirtual()
+                || !networkInterface.isUp()) {
           continue;
         }
 
@@ -302,8 +331,8 @@ public class SimpleFileServer {
         while (inetAddresses.hasMoreElements()) {
           InetAddress inetAddress = inetAddresses.nextElement();
           if (!inetAddress.isLoopbackAddress()
-              && !isPrivateIPAddress(inetAddress.getHostAddress())
-              && inetAddress instanceof Inet4Address) {
+                  && !isPrivateIPAddress(inetAddress.getHostAddress())
+                  && inetAddress instanceof Inet4Address) {
             // 这里得到了非回环地址的IPv4地址
             return inetAddress.getHostAddress();
           }
@@ -318,9 +347,9 @@ public class SimpleFileServer {
   // 判断是否为私有IP地址
   private static boolean isPrivateIPAddress(String ipAddress) {
     return ipAddress.startsWith("10.")
-        || ipAddress.startsWith("192.168.")
-        || (ipAddress.startsWith("172.")
+            || ipAddress.startsWith("192.168.")
+            || (ipAddress.startsWith("172.")
             && (Integer.parseInt(ipAddress.split("\\.")[1]) >= 16
-                && Integer.parseInt(ipAddress.split("\\.")[1]) <= 31));
+            && Integer.parseInt(ipAddress.split("\\.")[1]) <= 31));
   }
 }
