@@ -22,7 +22,7 @@ public class SimpleFileServer {
   private String uploadFileDir;
   private Long uploadDirMaxSize;
   protected static final boolean isOnWin =
-          System.getProperty("os.name").toLowerCase().contains("win");
+      System.getProperty("os.name").toLowerCase().contains("win");
 
   private HttpServer httpServer = null;
 
@@ -70,7 +70,7 @@ public class SimpleFileServer {
       ProcessBuilder builder = new ProcessBuilder("cmd.exe", "/c", cmd);
       Process process = builder.start();
       try (BufferedReader reader =
-                   new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+          new BufferedReader(new InputStreamReader(process.getInputStream()))) {
         String line;
         Set<String> pids = new HashSet<>();
         while ((line = reader.readLine()) != null) {
@@ -125,8 +125,8 @@ public class SimpleFileServer {
           // 设置响应头为文件下载
           exchange.getResponseHeaders().set("Content-Type", "application/octet-stream");
           exchange
-                  .getResponseHeaders()
-                  .set("Content-Disposition", "attachment; filename=\"" + file.getName() + "\"");
+              .getResponseHeaders()
+              .set("Content-Disposition", "attachment; filename=\"" + file.getName() + "\"");
           exchange.sendResponseHeaders(200, file.length());
 
           // 读取文件并写入响应体
@@ -182,8 +182,8 @@ public class SimpleFileServer {
           uploadDir.mkdirs();
         }
         br =
-                new BufferedReader(
-                        new InputStreamReader(new BufferedInputStream(exchange.getRequestBody())));
+            new BufferedReader(
+                new InputStreamReader(new BufferedInputStream(exchange.getRequestBody())));
         /* parse form-data */
         while ((line = br.readLine()) != null) {
           LOGGER.debug(line);
@@ -202,9 +202,9 @@ public class SimpleFileServer {
               br.readLine();
               isContent = true;
               bw =
-                      new BufferedWriter(
-                              new OutputStreamWriter(
-                                      Files.newOutputStream(new File(uploadDir, fileName).toPath())));
+                  new BufferedWriter(
+                      new OutputStreamWriter(
+                          Files.newOutputStream(new File(uploadDir, fileName).toPath())));
             } else {
               String paramName = line.substring(line.indexOf("name=") + 6, line.length() - 1);
               br.readLine();
@@ -229,11 +229,11 @@ public class SimpleFileServer {
           bw.close();
         }
         LOGGER.info(
-                "received parameters:{},{},{},{}", zeppelinUrl, noteBookId, paragraphId, fileName);
+            "received parameters:{},{},{},{}", zeppelinUrl, noteBookId, paragraphId, fileName);
         String result =
-                HttpUtil.sendPost(
-                        String.format("%s/api/notebook/run/%s/%s", zeppelinUrl, noteBookId, paragraphId),
-                        null);
+            HttpUtil.sendPost(
+                String.format("%s/api/notebook/run/%s/%s", zeppelinUrl, noteBookId, paragraphId),
+                null);
         LOGGER.info("result of rerun paragraph command: {}", result);
         exchange.sendResponseHeaders(200, 0);
       } catch (IOException e) {
@@ -308,7 +308,7 @@ public class SimpleFileServer {
                 }
               }
             })
-            .start();
+        .start();
   }
 
   /**
@@ -322,8 +322,8 @@ public class SimpleFileServer {
       while (networkInterfaces.hasMoreElements()) {
         NetworkInterface networkInterface = networkInterfaces.nextElement();
         if (networkInterface.isLoopback()
-                || networkInterface.isVirtual()
-                || !networkInterface.isUp()) {
+            || networkInterface.isVirtual()
+            || !networkInterface.isUp()) {
           continue;
         }
 
@@ -331,8 +331,8 @@ public class SimpleFileServer {
         while (inetAddresses.hasMoreElements()) {
           InetAddress inetAddress = inetAddresses.nextElement();
           if (!inetAddress.isLoopbackAddress()
-                  && !isPrivateIPAddress(inetAddress.getHostAddress())
-                  && inetAddress instanceof Inet4Address) {
+              && !isPrivateIPAddress(inetAddress.getHostAddress())
+              && inetAddress instanceof Inet4Address) {
             // 这里得到了非回环地址的IPv4地址
             return inetAddress.getHostAddress();
           }
@@ -347,9 +347,9 @@ public class SimpleFileServer {
   // 判断是否为私有IP地址
   private static boolean isPrivateIPAddress(String ipAddress) {
     return ipAddress.startsWith("10.")
-            || ipAddress.startsWith("192.168.")
-            || (ipAddress.startsWith("172.")
+        || ipAddress.startsWith("192.168.")
+        || (ipAddress.startsWith("172.")
             && (Integer.parseInt(ipAddress.split("\\.")[1]) >= 16
-            && Integer.parseInt(ipAddress.split("\\.")[1]) <= 31));
+                && Integer.parseInt(ipAddress.split("\\.")[1]) <= 31));
   }
 }
