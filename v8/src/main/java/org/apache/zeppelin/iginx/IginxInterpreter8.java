@@ -931,7 +931,6 @@ public class IginxInterpreter8 extends Interpreter {
   }
 
   private String[] parseMultiLinesSQL(String sql) {
-    sql = SqlCmdUtil.removeComments(sql);
     String[] tmp =
         sql.replace(TAB, WHITESPACE)
             .replace(NEWLINE, WHITESPACE)
